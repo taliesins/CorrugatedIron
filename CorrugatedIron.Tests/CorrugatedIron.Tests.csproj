@@ -46,14 +46,10 @@
       <HintPath>..\packages\Moq.4.0.10827\lib\NET40\Moq.dll</HintPath>
     </Reference>
     <Reference Include="Newtonsoft.Json">
-      <HintPath>..\packages\Newtonsoft.Json.4.5.9\lib\net40\Newtonsoft.Json.dll</HintPath>
-    </Reference>
-    <Reference Include="nunit.framework">
-      <HintPath>..\packages\NUnit.2.6.1\lib\nunit.framework.dll</HintPath>
-      <Private>True</Private>
+      <HintPath>..\packages\Newtonsoft.Json.4.5.10\lib\net40\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="protobuf-net">
-      <HintPath>..\packages\protobuf-net.2.0.0.480\lib\net40\protobuf-net.dll</HintPath>
+      <HintPath>..\packages\protobuf-net.2.0.0.602\lib\net40\protobuf-net.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
@@ -68,22 +64,19 @@
     <Compile Include="..\Metadata\VersionInfo.cs">
       <Link>Properties\VersionInfo.cs</Link>
     </Compile>
-    <Compile Include="AsyncMethodTester.cs" />
     <Compile Include="Comms\RoundRobinStrategyTests.cs" />
     <Compile Include="Json\RiakObjectConversionTests.cs" />
     <Compile Include="Json\TestObjects.cs" />
     <Compile Include="RiakAsyncClientTests.cs" />
     <Compile Include="RiakClientSetBucketPropertiesTests.cs" />
     <Compile Include="RiakClientTestBase.cs" />
-    <Compile Include="RiakClientPingTests.cs" />
-    <Compile Include="RiakClientTests.cs" />
     <Compile Include="Extensions\UnitTestExtensions.cs" />
     <Compile Include="Models\MapReduce\RiakMapReduceTests.cs" />
     <Compile Include="Models\RiakLinkTests.cs" />
     <Compile Include="Models\RiakObjectTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="KeyFilters\KeyFilterTests.cs" />
-    <Compile Include="Models\SolrTests.cs" />
+    <Compile Include="RiakSearchTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Metadata\CorrugatedIron.snk">

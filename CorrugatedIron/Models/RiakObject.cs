@@ -14,17 +14,17 @@
 // specific language governing permissions and limitations
 // under the License.
 
+using CorrugatedIron.Extensions;
+using CorrugatedIron.Messages;
+using CorrugatedIron.Util;
+using Newtonsoft.Json;
+using ProtoBuf;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Xml;
 using System.Xml.Serialization;
-using CorrugatedIron.Extensions;
-using CorrugatedIron.Messages;
-using CorrugatedIron.Util;
-using Newtonsoft.Json;
-using ProtoBuf;
 
 namespace CorrugatedIron.Models
 {
@@ -194,7 +194,7 @@ namespace CorrugatedIron.Models
             BinIndexes.Add(index.ToBinaryKey(), key);
         }
 
-        public void AddIntIndex(string index, int key)
+        public void AddIndex(string index, int key)
         {
             IntIndexes.Add(index.ToIntegerKey(), key);
         }
@@ -270,26 +270,37 @@ namespace CorrugatedIron.Models
         }
 
 
+            Value = content.value;
+            VTag = content.vtag.FromRiakString();
+            ContentEncoding = content.content_encoding.FromRiakString();
+            ContentType = content.content_type.FromRiakString();
+            UserMetaData = content.usermeta.ToDictionary(p => p.key.FromRiakString(), p => p.value.FromRiakString());
+            Indexes = content.indexes.ToDictionary(p => p.key.FromRiakString(), p => p.value.FromRiakString());
+            Links = content.links.Select(l => new RiakLink(l)).ToList();
+            Siblings = new List<RiakObject>();
+            LastModified = content.last_mod;
+            LastModifiedUsec = content.last_mod_usecs;
 
         internal RpbPutReq ToMessage()
         {
             UpdateLastModified();
             var message = new RpbPutReq
             {
-                Bucket = Bucket.ToRiakString(),
-                Key = Key.ToRiakString(),
-                VectorClock = VectorClock,
-                Content = new RpbContent
+                bucket = Bucket.ToRiakString(),
+                key = Key.ToRiakString(),
+                vclock = VectorClock,
+                content = new RpbContent
                 {
-                    ContentType = ContentType.ToRiakString(),
-                    Value = Value,
-                    VTag = VTag.ToRiakString(),
-                    UserMeta = UserMetaData.Select(kv => new RpbPair { Key = kv.Key.ToRiakString(), Value = kv.Value.ToRiakString() }).ToList(),
-                    Indexes = Indexes.Select(kv => new RpbPair { Key = kv.Key.ToRiakString(), Value = kv.Value.ToRiakString() }).ToList(),
-                    Links = Links.Select(l => l.ToMessage()).ToList()
+                    content_type = ContentType.ToRiakString(),
+                    value = Value,
+                    vtag = VTag.ToRiakString()
                 }
             };
 
+            message.content.usermeta.AddRange(UserMetaData.Select(kv => new RpbPair { key = kv.Key.ToRiakString(), value = kv.Value.ToRiakString() }));
+            message.content.indexes.AddRange(Indexes.Select(kv => new RpbPair { key = kv.Key.ToRiakString(), value = kv.Value.ToRiakString() }));
+            message.content.links.AddRange(Links.Select(l => l.ToMessage()));
+            
             return message;
         }
 
@@ -312,14 +323,17 @@ namespace CorrugatedIron.Models
             {
                 return false;
             }
+
             if(ReferenceEquals(this, obj))
             {
                 return true;
             }
+
             if(obj.GetType() != typeof(RiakObject))
             {
                 return false;
             }
+
             return Equals((RiakObject)obj);
         }
 
@@ -393,6 +407,17 @@ namespace CorrugatedIron.Models
             }
         }
 
+        public void SetObject<T>(T value, SerializeObjectToString<T> serializeObject)
+            where T : class
+        {
+            if (serializeObject == null)
+            {
+                throw new ArgumentException("serializeObject cannot be null");
+            }
+
+            Value = serializeObject(value).ToRiakString();
+        }
+
         public void SetObject<T>(T value, string contentType, SerializeObjectToString<T> serializeObject)
             where T : class 
         {
@@ -401,14 +426,19 @@ namespace CorrugatedIron.Models
                 throw new ArgumentException("contentType must be a valid MIME type");
             }
 
+            ContentType = contentType;
+
+            SetObject(value, serializeObject);
+        }
+
+        public void SetObject<T>(T value, SerializeObjectToByteArray<T> serializeObject)
+        {
             if (serializeObject == null)
             {
                 throw new ArgumentException("serializeObject cannot be null");
             }
-            
-            ContentType = contentType;
 
-            Value = serializeObject(value).ToRiakString();
+            Value = serializeObject(value);
         }
 
         public void SetObject<T>(T value, string contentType, SerializeObjectToByteArray<T> serializeObject)
@@ -418,14 +448,9 @@ namespace CorrugatedIron.Models
                 throw new ArgumentException("contentType must be a valid MIME type");
             }
 
-            if (serializeObject == null)
-            {
-                throw new ArgumentException("serializeObject cannot be null");
-            }
-
             ContentType = contentType;
 
-            Value = serializeObject(value);
+            SetObject(value, serializeObject);
         }
 
         // setting content type of SetObject changes content type
@@ -502,7 +527,7 @@ namespace CorrugatedIron.Models
             if(ContentType == RiakConstants.ContentTypes.ApplicationJson)
             {
                 var deserializeObject = new DeserializeObject<T>((value, contentType) => JsonConvert.DeserializeObject<T>(Value.FromRiakString()));
-                return GetObject(deserializeObject, null);
+                return GetObject(deserializeObject);
             }
 
             if(ContentType == RiakConstants.ContentTypes.ProtocolBuffers)
@@ -513,7 +538,7 @@ namespace CorrugatedIron.Models
                                                                          ms.Write(value, 0, Value.Length);
                                                                          return Serializer.Deserialize<T>(ms);
                                                                      });
-                return GetObject(deserializeObject, null);
+                return GetObject(deserializeObject);
             }
 
             if(ContentType == RiakConstants.ContentTypes.Xml)
@@ -525,7 +550,7 @@ namespace CorrugatedIron.Models
                                                                          return (T) serde.Deserialize(r);
                                                                      }
                     );
-                return GetObject<T>(deserializeObject, null);
+                return GetObject(deserializeObject);
             }
 
             throw new NotSupportedException(string.Format("Your current ContentType ({0}), is not supported.", ContentType));
