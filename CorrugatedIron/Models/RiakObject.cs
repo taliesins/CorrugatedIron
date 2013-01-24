@@ -159,36 +159,6 @@ namespace CorrugatedIron.Models
             IntIndexes = new Dictionary<string, int>();
         }
 
-        internal RiakObject(string bucket, string key, RpbContent content, byte[] vectorClock)
-        {
-            Bucket = bucket;
-            Key = key;
-            VectorClock = vectorClock;
-
-            Value = content.Value;
-            VTag = content.VTag.FromRiakString();
-            ContentEncoding = content.ContentEncoding.FromRiakString();
-            ContentType = content.ContentType.FromRiakString();
-            UserMetaData = content.UserMeta.ToDictionary(p => p.Key.FromRiakString(), p => p.Value.FromRiakString());
-            Indexes = content.Indexes.ToDictionary(p => p.Key.FromRiakString(), p => p.Value.FromRiakString());
-            Links = content.Links.Select(l => new RiakLink(l)).ToList();
-            Siblings = new List<RiakObject>();
-            LastModified = content.LastMod;
-            LastModifiedUsec = content.LastModUSecs;
-
-            _hashCode = CalculateHashCode();
-        }
-
-        internal RiakObject(string bucket, string key, ICollection<RpbContent> contents, byte[] vectorClock)
-            : this(bucket, key, contents.First(), vectorClock)
-        {
-            if (contents.Count > 1)
-            {
-                Siblings = contents.Select(c => new RiakObject(bucket, key, c, vectorClock)).ToList();
-                _hashCode = CalculateHashCode();
-            }
-        }
-
         public void AddBinIndex(string index, string key)
         {
             BinIndexes.Add(index.ToBinaryKey(), key);
@@ -268,6 +238,12 @@ namespace CorrugatedIron.Models
         {
             return new RiakObjectId(Bucket, Key);
         }
+        
+        internal RiakObject(string bucket, string key, RpbContent content, byte[] vectorClock)
+        {
+            Bucket = bucket;
+            Key = key;
+            VectorClock = vectorClock;
 
 
             Value = content.value;
@@ -280,6 +256,19 @@ namespace CorrugatedIron.Models
             Siblings = new List<RiakObject>();
             LastModified = content.last_mod;
             LastModifiedUsec = content.last_mod_usecs;
+
+            _hashCode = CalculateHashCode();
+        }
+
+        internal RiakObject(string bucket, string key, ICollection<RpbContent> contents, byte[] vectorClock)
+            : this(bucket, key, contents.First(), vectorClock)
+        {
+            if (contents.Count > 1)
+            {
+                Siblings = contents.Select(c => new RiakObject(bucket, key, c, vectorClock)).ToList();
+                _hashCode = CalculateHashCode();
+            }
+        }
 
         internal RpbPutReq ToMessage()
         {

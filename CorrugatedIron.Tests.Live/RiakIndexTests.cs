@@ -49,7 +49,7 @@ namespace CorrugatedIron.Tests.Live
         public void IndexesAreSavedWithAnObject()
         {
             var o = new RiakObject(Bucket, "the_object", "{ value: \"this is an object\" }");
-            o.AddIndex("tacos", "are great!");
+            o.AddBinIndex("tacos", "are great!");
             o.AddIndex("age", 12);
             
             Client.Put(o);
@@ -92,7 +92,7 @@ namespace CorrugatedIron.Tests.Live
             for (var i = 0; i < 10; i++)
             {
                 var o = new RiakObject(Bucket, i.ToString(), "{ value: \"this is an object\" }");
-                o.AddIndex("age", "32");
+                o.AddBinIndex("age", "32");
                 
                 Client.Put(o);
             }
