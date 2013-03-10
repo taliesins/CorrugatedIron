@@ -84,6 +84,7 @@
     <Compile Include="Exceptions\RiakInvalidDataException.cs" />
     <Compile Include="Exceptions\RiakException.cs" />
     <Compile Include="IRiakBatchClient.cs" />
+    <Compile Include="IRiakClusterManager.cs" />
     <Compile Include="IRiakEndPoint.cs" />
     <Compile Include="Messages\riak.cs">
       <AutoGen>True</AutoGen>
@@ -226,6 +227,7 @@
     <Compile Include="RiakCluster.cs" />
     <Compile Include="Comms\RiakNode.cs" />
     <Compile Include="Models\MapReduce\RiakMapReduceResult.cs" />
+    <Compile Include="RiakClusterManager.cs" />
     <Compile Include="RiakEndPoint.cs" />
     <Compile Include="RiakExternalLoadBalancer.cs" />
     <Compile Include="RiakResult.cs" />
