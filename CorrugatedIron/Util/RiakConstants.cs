@@ -14,6 +14,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+using System.Collections.Generic;
+
 namespace CorrugatedIron.Util
 {
     public static class RiakConstants
@@ -59,8 +61,6 @@ namespace CorrugatedIron.Util
             public const string Utf8 = @"UTF-8";
         }
 
-        //public const int MinClientIdLength = 4;
-
         public static class QuorumOptions
         {
             private const uint UintMax = uint.MaxValue;
@@ -69,6 +69,14 @@ namespace CorrugatedIron.Util
             public const uint All = UintMax - 3;
             public const uint Default = UintMax - 4;
         }
+
+        internal static Dictionary<string, uint> QuorumOptionsLookup = new Dictionary<string, uint>
+        {
+            {"one", QuorumOptions.One},
+            {"quorum", QuorumOptions.Quorum},
+            {"all", QuorumOptions.All},
+            {"default", QuorumOptions.Default}
+        };
 
         public static class Defaults
         {
@@ -93,6 +101,15 @@ namespace CorrugatedIron.Util
             public const string Tokenize = @"tokenize";
         }
 
+        public static class SystemIndexKeys
+        {
+            public const string RiakKeysIndex = "$key";
+            public const string RiakBucketIndex = "$bucket";
+
+            public readonly static HashSet<string> SystemBinKeys = new HashSet<string> { RiakKeysIndex, RiakBucketIndex };
+            public readonly static HashSet<string> SystemIntKeys = new HashSet<string>();
+        }
+
         public static class Rest
         {
             public const string UserAgent = "CorrugatedIron v0.1 (REST)";
@@ -110,6 +127,7 @@ namespace CorrugatedIron.Util
             {
                 public const string RiakRoot = "/riak";
                 public const string MapReduce = "/mapred";
+                public const string BucketPropsFmt = "/buckets/{0}/props";
             }
 
             public static class Scheme

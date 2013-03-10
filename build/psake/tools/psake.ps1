@@ -27,7 +27,7 @@ param(
 
 # '[p]sake' is the same as 'psake' but $Error is not polluted
 remove-module [p]sake
-import-module (join-path $scriptPath psake.psm1)
+import-module (join-path $(Split-Path -parent $MyInvocation.MyCommand.path) psake.psm1)
 if ($help) {
   Get-Help Invoke-psake -full
   return

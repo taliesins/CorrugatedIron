@@ -20,7 +20,9 @@ using CorrugatedIron.Models.MapReduce;
 using CorrugatedIron.Models.MapReduce.Inputs;
 using CorrugatedIron.Tests.Extensions;
 using NUnit.Framework;
+using System;
 using System.Linq;
+using System.Collections.Generic;
 
 namespace CorrugatedIron.Tests.Live
 {
@@ -49,8 +51,8 @@ namespace CorrugatedIron.Tests.Live
         public void IndexesAreSavedWithAnObject()
         {
             var o = new RiakObject(Bucket, "the_object", "{ value: \"this is an object\" }");
-            o.AddBinIndex("tacos", "are great!");
-            o.AddIndex("age", 12);
+            o.BinIndex("tacos").Set("are great!");
+            o.IntIndex("age").Set(12);
             
             Client.Put(o);
             
@@ -69,7 +71,7 @@ namespace CorrugatedIron.Tests.Live
             for (var i = 0; i < 10; i++)
             {
                 var o = new RiakObject(Bucket, i.ToString(), "{ value: \"this is an object\" }");
-                o.AddIndex("age", 32);
+                o.IntIndex("age").Add(32);
                 
                 Client.Put(o);
             }
@@ -92,7 +94,7 @@ namespace CorrugatedIron.Tests.Live
             for (var i = 0; i < 10; i++)
             {
                 var o = new RiakObject(Bucket, i.ToString(), "{ value: \"this is an object\" }");
-                o.AddBinIndex("age", "32");
+                o.BinIndex("age").Set("32");
                 
                 Client.Put(o);
             }
@@ -114,8 +116,8 @@ namespace CorrugatedIron.Tests.Live
         {
             for (var i = 0; i < 10; i++)
             {
-                var o = new RiakObject(Bucket, i.ToString(), "{\"value\":\"this is an object\"}");
-                o.AddIndex("age", 32);
+                var o = new RiakObject(Bucket, Guid.NewGuid().ToString(), "{\"value\":\"this is an object\"}");
+                o.IntIndex("age").Set(32, 20);
                 
                 Client.Put(o);
             }
@@ -126,7 +128,7 @@ namespace CorrugatedIron.Tests.Live
             var result = Client.MapReduce(mr);
             result.IsSuccess.ShouldBeTrue(result.ErrorMessage);
 
-            var keys = result.Value.PhaseResults.SelectMany(x => x.GetObjects<RiakObjectId>()).ToList();
+            var keys = result.Value.PhaseResults.SelectMany(x => x.GetObjectIds()).ToList();
             
             keys.Count().ShouldEqual(10);
             
@@ -142,20 +144,113 @@ namespace CorrugatedIron.Tests.Live
         {
             for (var i = 0; i < 10; i++)
             {
-                var o = new RiakObject(Bucket, i.ToString(), "{ value: \"this is an object\" }");
-                o.AddIndex("age", 25 + i);
+                var o = new RiakObject(Bucket, Guid.NewGuid().ToString(), "{ value: \"this is an object\" }");
+                o.IntIndex("age").Set(25 + i);
+                
+                Client.Put(o);
+            }
+
+            var mr = new RiakMapReduceQuery()
+                .Inputs(RiakIndex.Range(Bucket, "age", 27, 30));
+            
+            var result = Client.MapReduce(mr);
+            result.IsSuccess.ShouldBeTrue(result.ErrorMessage);
+            result.Value.PhaseResults.SelectMany(x => x.GetObjectIds()).Count().ShouldEqual(4);
+            
+            // TODO write tests verifying results
+        }
+
+        [Test]
+        public void AllKeysReturnsListOfKeys()
+        {
+            var bucket = Bucket + "_" + Guid.NewGuid().ToString();
+            var originalKeys = new List<string>();
+
+            for (var i = 0; i < 10; i++)
+            {
+                var o = new RiakObject(bucket, Guid.NewGuid().ToString(), "{ value: \"this is an object\" }");
+                originalKeys.Add(o.Key);
+
+                Client.Put(o);
+            }
+
+            var mr = new RiakMapReduceQuery()
+                .Inputs(RiakIndex.AllKeys(bucket));
+
+            var result = Client.MapReduce(mr);
+            var keys = result.Value.PhaseResults.SelectMany(x => x.GetObjectIds()).ToList();
+
+            result.IsSuccess.ShouldBeTrue(result.ErrorMessage);
+            keys.Count.ShouldEqual(10);
+
+            foreach (var key in keys)
+            {
+                key.Bucket.ShouldNotBeNullOrEmpty();
+                key.Key.ShouldNotBeNullOrEmpty();
+                originalKeys.Contains(key.Key).ShouldBeTrue();
+            }
+        }
+
+        [Test]
+        public void KeysReturnsSelectiveListOfKeys()
+        {
+            var bucket = Bucket + "_" + Guid.NewGuid().ToString();
+            var originalKeys = new List<string>();
+
+            for (var i = 0; i < 10; i++)
+            {
+                var o = new RiakObject(bucket, i.ToString(), "{ value: \"this is an object\" }");
+                originalKeys.Add(o.Key);
+
+                Client.Put(o);
+            }
+
+            var mr = new RiakMapReduceQuery()
+                .Inputs(RiakIndex.Keys(bucket, "2", "6"))
+                .ReduceErlang(r => r.ModFun("riak_kv_mapreduce", "reduce_identity")
+                .Argument("do_prereduce")
+                .Keep(true));
+
+            var result = Client.MapReduce(mr);
+            var keys = result.Value.PhaseResults.SelectMany(x => x.GetObjectIds()).ToList();
+
+            result.IsSuccess.ShouldBeTrue(result.ErrorMessage);
+            keys.Count.ShouldEqual(5);
+
+            foreach (var key in keys)
+            {
+                key.Bucket.ShouldNotBeNullOrEmpty();
+                key.Key.ShouldNotBeNullOrEmpty();
+                originalKeys.Contains(key.Key).ShouldBeTrue();
+            }
+        }
+
+        [Test]
+        public void ListKeysUsingIndexReturnsAllKeys()
+        {
+            var bucket = Bucket + "_" + Guid.NewGuid().ToString();
+            var originalKeys = new HashSet<string>();
+
+            for (var i = 0; i < 10; i++)
+            {
+                var o = new RiakObject(bucket, Guid.NewGuid().ToString(), "{ value: \"this is an object\" }");
+                originalKeys.Add(o.Key);
                 
                 Client.Put(o);
             }
             
-            var mr = new RiakMapReduceQuery()
-                .Inputs(RiakIndex.Range(Bucket, "age", 27, 30))
-                .ReduceErlang(r => r.ModFun("riak_kv_mapreduce", "reduce_identity").Keep(true));
-            
-            var result = Client.MapReduce(mr);
+            var result = Client.ListKeysFromIndex(bucket);
+
             result.IsSuccess.ShouldBeTrue(result.ErrorMessage);
+
+            var keys = result.Value;
+            keys.Count.ShouldEqual(10);
             
-            // TODO write tests verifying results
+            foreach (var key in keys)
+            {
+                key.ShouldNotBeNullOrEmpty();
+                originalKeys.Contains(key).ShouldBeTrue();
+            }
         }
     }
 }
