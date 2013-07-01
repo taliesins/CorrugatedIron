@@ -14,18 +14,18 @@
 // specific language governing permissions and limitations
 // under the License.
 
-using CorrugatedIron.Extensions;
-using CorrugatedIron.Messages;
-using CorrugatedIron.Models.Index;
-using CorrugatedIron.Util;
-using Newtonsoft.Json;
-using ProtoBuf;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Xml;
 using System.Xml.Serialization;
+using CorrugatedIron.Extensions;
+using CorrugatedIron.Messages;
+using CorrugatedIron.Models.Index;
+using CorrugatedIron.Util;
+using Newtonsoft.Json;
+using ProtoBuf;
 
 namespace CorrugatedIron.Models
 {
@@ -37,12 +37,30 @@ namespace CorrugatedIron.Models
 
     public delegate T ResolveConflict<T>(List<T> conflictedObjects);
 
-    public class RiakObject
+    /// <summary>
+    /// <para>Implements a writeable vector clock interface. Callers must explictly use the
+    /// IWriteableVClock interface to set the vector clock value. This is by design and
+    /// is implemented in an attempt to prevent developers new to Riak from causing themselves
+    /// more pain. This trade off should present developers with a reliable way to explicitly
+    /// drop down to mucking about with vector clocks - it becomes apparent to a casual 
+    /// observer that something out of the ordinary is happening.</para>
+    /// <para>A better understanding of the usefulness of vector clocks can be found in 
+    /// John Daily's Understanding Riak’s Configurable Behaviors: Part 2
+    /// (http://basho.com/riaks-config-behaviors-part-2/).
+    /// </para>
+    /// </summary>
+    public interface IWriteableVClock
     {
-        private List<string> _vtags;
+        void SetVClock(byte[] vclock);
+    }
+
+    public class RiakObject : IWriteableVClock
+    {
         private readonly int _hashCode;
         private readonly Dictionary<string, IntIndex> _intIndexes;
         private readonly Dictionary<string, BinIndex> _binIndexes;
+
+        private List<string> _vtags;
 
         public string Bucket { get; private set; }
         public string Key { get; private set; }
@@ -84,26 +102,83 @@ namespace CorrugatedIron.Models
             get { return _vtags ?? (_vtags = Siblings.Count == 0 ? new List<string> { VTag } : Siblings.Select(s => s.VTag).ToList()); }
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="CorrugatedIron.Models.RiakObject"/> class.
+        /// </summary>
+        /// <param name="bucket">Bucket.</param>
+        /// <param name="key">Key.</param>
+        /// <remarks>When saving a binary object to Riak, one of the appropriate binary 
+        /// <see cref="CorrugatedIron.Util.RiakConstants.ContentTypes"/> should be used.
+        /// If the content type is not know, fall back to application/octet-stream. In addition,
+        /// when saving binary data to Riak, a charSet of null/empty string should be used. The 
+        /// constant CharSets.Binary should be used.</remarks>
         public RiakObject(string bucket, string key)
             : this(bucket, key, null, RiakConstants.Defaults.ContentType)
         {
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="CorrugatedIron.Models.RiakObject"/> class.
+        /// </summary>
+        /// <param name="bucket">Bucket.</param>
+        /// <param name="key">Key.</param>
+        /// <param name="value">Value.</param>
+        /// <remarks>When saving a binary object to Riak, one of the appropriate binary 
+        /// <see cref="CorrugatedIron.Util.RiakConstants.ContentTypes"/> should be used.
+        /// If the content type is not know, fall back to application/octet-stream. In addition,
+        /// when saving binary data to Riak, a charSet of null/empty string should be used. The 
+        /// constant CharSets.Binary should be used.</remarks>
         public RiakObject(string bucket, string key, string value)
             : this(bucket, key, value, RiakConstants.Defaults.ContentType)
         {
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="CorrugatedIron.Models.RiakObject"/> class.
+        /// </summary>
+        /// <param name="bucket">Bucket.</param>
+        /// <param name="key">Key.</param>
+        /// <param name="value">Value.</param>
+        /// <remarks>When saving a binary object to Riak, one of the appropriate binary 
+        /// <see cref="CorrugatedIron.Util.RiakConstants.ContentTypes"/> should be used.
+        /// If the content type is not know, fall back to application/octet-stream. In addition,
+        /// when saving binary data to Riak, a charSet of null/empty string should be used. The 
+        /// constant CharSets.Binary should be used.</remarks>
         public RiakObject(string bucket, string key, object value)
             : this(bucket, key, value.ToJson(), RiakConstants.ContentTypes.ApplicationJson)
         {
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="CorrugatedIron.Models.RiakObject"/> class.
+        /// </summary>
+        /// <param name="bucket">Bucket.</param>
+        /// <param name="key">Key.</param>
+        /// <param name="value">Value.</param>
+        /// <param name="contentType">Content type of the object. These should be MIME compliant content types.</param>
+        /// <remarks>When saving a binary object to Riak, one of the appropriate binary 
+        /// <see cref="CorrugatedIron.Util.RiakConstants.ContentTypes"/> should be used.
+        /// If the content type is not know, fall back to application/octet-stream. In addition,
+        /// when saving binary data to Riak, a charSet of null/empty string should be used. The 
+        /// constant CharSets.Binary should be used.</remarks>
         public RiakObject(string bucket, string key, string value, string contentType)
             : this(bucket, key, value, contentType, RiakConstants.Defaults.CharSet)
         {
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="CorrugatedIron.Models.RiakObject"/> class.
+        /// </summary>
+        /// <param name="bucket">Bucket.</param>
+        /// <param name="key">Key.</param>
+        /// <param name="value">Value.</param>
+        /// <param name="contentType">Content type of the object. These should be MIME compliant content types.</param>
+        /// <param name="charSet">Character set used to encode saved data.</param>
+        /// <remarks>When saving a binary object to Riak, one of the appropriate binary 
+        /// <see cref="CorrugatedIron.Util.RiakConstants.ContentTypes"/> should be used.
+        /// If the content type is not know, fall back to application/octet-stream. In addition,
+        /// when saving binary data to Riak, a charSet of null/empty string should be used. The 
+        /// constant CharSets.Binary should be used.</remarks>
         public RiakObject(string bucket, string key, string value, string contentType, string charSet)
             : this(bucket, key, value.ToRiakString(), contentType, charSet, null)
         {
@@ -111,9 +186,21 @@ namespace CorrugatedIron.Models
 
         public RiakObject(string bucket, string key, string value, string contentType, string charSet, byte[] vectorClock)
             : this(bucket, key, value.ToRiakString(), contentType, charSet, vectorClock)
-        {
-        }
+        {}
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="CorrugatedIron.Models.RiakObject"/> class.
+        /// </summary>
+        /// <param name="bucket">Bucket.</param>
+        /// <param name="key">Key.</param>
+        /// <param name="value">Value.</param>
+        /// <param name="contentType">Content type of the object. These should be MIME compliant content types.</param>
+        /// <param name="charSet">Character set used to encode saved data.</param>
+        /// <remarks>When saving a binary object to Riak, one of the appropriate binary 
+        /// <see cref="CorrugatedIron.Util.RiakConstants.ContentTypes"/> should be used.
+        /// If the content type is not know, fall back to application/octet-stream. In addition,
+        /// when saving binary data to Riak, a charSet of null/empty string should be used. The 
+        /// constant CharSets.Binary should be used.</remarks>
         public RiakObject(string bucket, string key, byte[] value, string contentType, string charSet, byte[] vectorClock)
         {
             Bucket = bucket;
@@ -132,7 +219,8 @@ namespace CorrugatedIron.Models
 
         public IntIndex IntIndex(string name)
         {
-            IntIndex index = null;
+            var index = default(IntIndex);
+            name = name.ToLower();
 
             if (!_intIndexes.TryGetValue(name, out index))
             {
@@ -144,7 +232,8 @@ namespace CorrugatedIron.Models
 
         public BinIndex BinIndex(string name)
         {
-            BinIndex index = null;
+            var index = default(BinIndex);
+            name = name.ToLower();
 
             if (!_binIndexes.TryGetValue(name, out index))
             {
@@ -240,13 +329,13 @@ namespace CorrugatedIron.Models
 
                 if (name.EndsWith(RiakConstants.IndexSuffix.Integer))
                 {
-                   IntIndex(name.Remove(name.Length - RiakConstants.IndexSuffix.Integer.Length))
-                    .Add(index.value.FromRiakString());
+                    IntIndex(name.Remove(name.Length - RiakConstants.IndexSuffix.Integer.Length))
+                     .Add(index.value.FromRiakString());
                 }
                 else
                 {
-                   BinIndex(name.Remove(name.Length - RiakConstants.IndexSuffix.Binary.Length))
-                    .Add(index.value.FromRiakString());
+                    BinIndex(name.Remove(name.Length - RiakConstants.IndexSuffix.Binary.Length))
+                     .Add(index.value.FromRiakString());
                 }
             }
 
@@ -286,7 +375,7 @@ namespace CorrugatedIron.Models
                 i.Values.Select(v => new RpbPair { key = i.RiakIndexName.ToRiakString(), value = v.ToString().ToRiakString() })));
             message.content.indexes.AddRange(BinIndexes.Values.SelectMany(i =>
                 i.Values.Select(v => new RpbPair { key = i.RiakIndexName.ToRiakString(), value = v.ToRiakString() })));
-            
+
             return message;
         }
 
@@ -305,17 +394,17 @@ namespace CorrugatedIron.Models
 
         public override bool Equals(object obj)
         {
-            if(ReferenceEquals(null, obj))
+            if (ReferenceEquals(null, obj))
             {
                 return false;
             }
 
-            if(ReferenceEquals(this, obj))
+            if (ReferenceEquals(this, obj))
             {
                 return true;
             }
 
-            if(obj.GetType() != typeof(RiakObject))
+            if (obj.GetType() != typeof(RiakObject))
             {
                 return false;
             }
@@ -333,12 +422,12 @@ namespace CorrugatedIron.Models
 
         public bool Equals(RiakObject other)
         {
-            if(ReferenceEquals(null, other))
+            if (ReferenceEquals(null, other))
             {
                 return false;
             }
 
-            if(ReferenceEquals(this, other))
+            if (ReferenceEquals(this, other))
             {
                 return true;
             }
@@ -395,6 +484,11 @@ namespace CorrugatedIron.Models
             }
         }
 
+        void IWriteableVClock.SetVClock(byte[] vclock)
+        {
+            VectorClock = vclock;
+        }
+
         public void SetObject<T>(T value, SerializeObjectToString<T> serializeObject)
             where T : class
         {
@@ -407,7 +501,7 @@ namespace CorrugatedIron.Models
         }
 
         public void SetObject<T>(T value, string contentType, SerializeObjectToString<T> serializeObject)
-            where T : class 
+            where T : class
         {
             if (string.IsNullOrEmpty(contentType))
             {
@@ -445,23 +539,23 @@ namespace CorrugatedIron.Models
         public void SetObject<T>(T value, string contentType = null)
             where T : class
         {
-            if(!string.IsNullOrEmpty(contentType))
+            if (!string.IsNullOrEmpty(contentType))
             {
                 ContentType = contentType;
             }
 
             // check content type
             // save based on content type's deserialization method
-            if(ContentType == RiakConstants.ContentTypes.ApplicationJson)
+            if (ContentType == RiakConstants.ContentTypes.ApplicationJson)
             {
                 var sots = new SerializeObjectToString<T>(theObject => theObject.Serialize());
                 SetObject(value, ContentType, sots);
                 return;
             }
 
-            if(ContentType == RiakConstants.ContentTypes.ProtocolBuffers)
+            if (ContentType == RiakConstants.ContentTypes.ProtocolBuffers)
             {
-                var soba = new SerializeObjectToByteArray<T>(theObject =>  
+                var soba = new SerializeObjectToByteArray<T>(theObject =>
                 {
                     var ms = new MemoryStream();
                     Serializer.Serialize(ms, value);
@@ -471,7 +565,7 @@ namespace CorrugatedIron.Models
                 return;
             }
 
-            if(ContentType == RiakConstants.ContentTypes.Xml)
+            if (ContentType == RiakConstants.ContentTypes.Xml)
             {
                 var soba = new SerializeObjectToByteArray<T>(theObject =>
                 {
@@ -483,8 +577,8 @@ namespace CorrugatedIron.Models
                 SetObject(value, ContentType, soba);
                 return;
             }
-            
-            if(ContentType.StartsWith("text"))
+
+            if (ContentType.StartsWith("text"))
             {
                 Value = value.ToString().ToRiakString();
                 return;
@@ -512,32 +606,33 @@ namespace CorrugatedIron.Models
 
         public T GetObject<T>()
         {
-            if(ContentType == RiakConstants.ContentTypes.ApplicationJson)
+            if (ContentType == RiakConstants.ContentTypes.ApplicationJson)
             {
                 var deserializeObject = new DeserializeObject<T>((value, contentType) => JsonConvert.DeserializeObject<T>(Value.FromRiakString()));
                 return GetObject(deserializeObject);
             }
 
-            if(ContentType == RiakConstants.ContentTypes.ProtocolBuffers)
+            if (ContentType == RiakConstants.ContentTypes.ProtocolBuffers)
             {
                 var deserializeObject = new DeserializeObject<T>((value, contentType) =>
-                                                                     {
-                                                                         var ms = new MemoryStream();
-                                                                         ms.Write(value, 0, Value.Length);
-                                                                         return Serializer.Deserialize<T>(ms);
-                                                                     });
+                {
+                    var ms = new MemoryStream();
+                    ms.Write(value, 0, Value.Length);
+                    return Serializer.Deserialize<T>(ms);
+                });
+
                 return GetObject(deserializeObject);
             }
 
-            if(ContentType == RiakConstants.ContentTypes.Xml)
+            if (ContentType == RiakConstants.ContentTypes.Xml)
             {
                 var deserializeObject = new DeserializeObject<T>((value, contenType) =>
-                                                                     {
-                                                                         var r = XmlReader.Create(Value.FromRiakString());
-                                                                         var serde = new XmlSerializer(typeof (T));
-                                                                         return (T) serde.Deserialize(r);
-                                                                     }
-                    );
+                {
+                    var r = XmlReader.Create(Value.FromRiakString());
+                    var serde = new XmlSerializer(typeof(T));
+                    return (T)serde.Deserialize(r);
+                });
+
                 return GetObject(deserializeObject);
             }
 

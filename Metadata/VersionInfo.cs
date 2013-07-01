@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2011 - OJ Reeves & Jeremiah Peschka
+﻿// Copyright (c) 2013 - OJ Reeves & Jeremiah Peschka
 //
 // This file is provided to you under the Apache License,
 // Version 2.0 (the "License"); you may not use this file
@@ -22,7 +22,7 @@ using System.Reflection;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Distributed Nonsense")]
 [assembly: AssemblyProduct("CorrugatedIron")]
-[assembly: AssemblyCopyright("Copyright © 2011 OJ Reeves & Jeremiah Peschka")]
+[assembly: AssemblyCopyright("Copyright © 2013 OJ Reeves & Jeremiah Peschka")]
 [assembly: AssemblyTrademark("CorrugatedIron - Distributed Nonsense")]
 [assembly: AssemblyCulture("")]
 

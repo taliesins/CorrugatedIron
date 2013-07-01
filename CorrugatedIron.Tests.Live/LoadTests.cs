@@ -43,8 +43,8 @@ namespace CorrugatedIron.Tests.Live.LoadTests
         //private const int ThreadCount = 1;
         //private const int ActionCount = 1;
 
-        public WhenUnderLoad()
-            : base("riakLoadTestConfiguration")
+        public WhenUnderLoad(string configSection = "riakLoadTestConfiguration")
+            : base(configSection)
         {
         }
 
@@ -64,7 +64,7 @@ namespace CorrugatedIron.Tests.Live.LoadTests
             }
 
             var input = new RiakBucketKeyInput();
-            keys.ForEach(k => input.AddBucketKey(MapReduceBucket, k));
+            keys.ForEach(k => input.Add(MapReduceBucket, k));
 
             var query = new RiakMapReduceQuery()
                 .Inputs(input)
@@ -123,7 +123,7 @@ namespace CorrugatedIron.Tests.Live.LoadTests
             }
 
             var input = new RiakBucketKeyInput();
-            keys.ForEach(k => input.AddBucketKey(MapReduceBucket, k));
+            keys.ForEach(k => input.Add(MapReduceBucket, k));
 
             var query = new RiakMapReduceQuery()
                 .Inputs(input)
@@ -172,6 +172,15 @@ namespace CorrugatedIron.Tests.Live.LoadTests
                 }).Where(r => r != null).SelectMany(r => r);
 
             return results.ToList();
+        }
+    }
+
+    [TestFixture]
+    public class WhenUnderLoadWithOnTheFlyConnections : WhenUnderLoad
+    {
+        public WhenUnderLoadWithOnTheFlyConnections()
+            : base("riakOnTheFlyLoadTestConfiguration")
+        {
         }
     }
 }

@@ -1,6 +1,57 @@
 Release Notes
 =============
 
+v1.3.2
+------
+
+### Features
+
+* Enabled the setting of Vector Clock values via an explicit interface implementation. The property was not made writeable as it wasn't something that we felt that most users should use. Casting a `RiakObject` to an `IWriteableVclock` interface allows the Vclock to be set.
+
+### Fixes
+
+* [Issue 120](https://github.com/DistributedNonsense/CorrugatedIron/issues/120) - Update both `RiakBucketKeyInput` and `RiakBucketKeyKeyDataInput` classes so that their APIs are a little nicer to use. This also results in a bug fix in `RiakBucketKeyKeyDataInput` where the serialisation was (rather horribly) incorrect.
+* [Issue 115](https://github.com/DistributedNonsense/CorrugatedIron/issues/115) - Fix problem where secondary indexes are not forced to lower case (like they are in Riak).
+
+v1.3.1
+------
+
+This is a small bug fix release.
+
+### Fixes
+
+* [Issue 118](https://github.com/DistributedNonsense/CorrugatedIron/issues/118) - Fix problem where the Riak Search API didn't provide all the fields available when doing searches in Riak.
+
+v1.3.0
+------
+
+This release of **CorrugatedIron** includes support for all features of Riak 1.3 except for the inclusion of IPv6.
+
+This version also includes a change which "breaks" the interface to integer secondary indexes. This was introduced beacuse integer 2i's in Riak are much bigger than a 32-bit int. This might result in some fun if any of your code is storing your 2i value in a 32-bit integer field. However, in most cases, direct usage of integer literals or comparisons with integer values will work as is because of the built-in implicit conversion from `int` to `BigInteger`.
+
+## Features
+
+* [Issue 111](https://github.com/DistributedNonsense/CorrugatedIron/issues/111) - Add support for per-node on-the-fly connections.
+* [Issue 109](https://github.com/DistributedNonsense/CorrugatedIron/issues/109) - Add `Binary` to the `CharSet` constants and add some docs.
+
+### Fixes
+
+* [Issue 112](https://github.com/DistributedNonsense/CorrugatedIron/issues/112) - Prevent invalid bucket/keys names.
+* [Issue 106](https://github.com/DistributedNonsense/CorrugatedIron/issues/106) - Fix problem where the `arg` parameter for Map/Reduce jobs was only supporting string elements. Now supports value types, collections and complex objects.
+* [Issue 105](https://github.com/DistributedNonsense/CorrugatedIron/issues/106) - Fixed 2i implementation to use `BigInteger` instead of `int`.
+
+
+## Thanks
+
+This release includes code that has been influenced at least in part by the following community members:
+
+* [Alex Moore](https://github.com/alexmoore)
+* [Andrey Yankovsky](https://github.com/Yankovsky)
+* [Dissolubilis](https://github.com/Dissolubilis)
+* [Tony Williams](https://github.com/TWith2Sugars)
+
+Thanks to all!
+
 v1.2.1
 ------
 
