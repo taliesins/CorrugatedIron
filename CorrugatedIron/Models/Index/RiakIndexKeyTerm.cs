@@ -1,6 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<!--
-// Copyright (c) 2011 - OJ Reeves & Jeremiah Peschka
+﻿// Copyright (c) 2011 - OJ Reeves & Jeremiah Peschka
 //
 // This file is provided to you under the Apache License,
 // Version 2.0 (the "License"); you may not use this file
@@ -15,12 +13,22 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
--->
-<packages>
 
-  <package id="Moq" version="4.0.10827" targetFramework="net45" />
-  <package id="Newtonsoft.Json" version="5.0.6" targetFramework="net45" />
-  <package id="NUnit" version="2.6.1" targetFramework="net45" />
-  <package id="NUnit" version="2.6.2" targetFramework="net45" />
-  <package id="protobuf-net" version="2.0.0.640" targetFramework="net45" />
-</packages>
+namespace CorrugatedIron.Models.Index
+{
+    public class RiakIndexKeyTerm
+    {
+        public string Key { get; private set; }
+        public string Term { get; private set; }
+
+        public RiakIndexKeyTerm(string key)
+        {
+            Key = key;
+        }
+
+        public RiakIndexKeyTerm(string key, string term) : this(key)
+        {
+            Term = term;
+        }
+    }
+}
