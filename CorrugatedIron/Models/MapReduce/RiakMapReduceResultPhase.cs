@@ -48,13 +48,8 @@ namespace CorrugatedIron.Models.MapReduce
         /// <returns>IList<typeparam name="T">T</typeparam></returns>
         public IList<T> GetObjects<T>()
         {
-            var rVal = Values.Select(v => JsonConvert.DeserializeObject<T>(v.FromRiakString())).ToList();
-            return rVal;
-        }
-
-        public IEnumerable<T> GetSingleObjects<T>()
-        {
-            var rVal = Values.Select(v => JsonConvert.DeserializeObject<T>(v.FromRiakStringTrim()));
+            var valuesString = Values.Select(v => v.FromRiakString());
+            var rVal = valuesString.Select(JsonConvert.DeserializeObject<T>).ToList();
             return rVal;
         }
 

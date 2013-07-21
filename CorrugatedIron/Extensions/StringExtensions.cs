@@ -41,11 +41,6 @@ namespace CorrugatedIron.Extensions
             return value == null ? null : RiakEncoding.GetString(value);
         }
 
-        public static string FromRiakStringTrim(this byte[] value)
-        {
-            return value == null ? null : RiakEncoding.GetString(value, 1, value.Length - 2);
-        }
-
         public static string Fmt(this string formatter, params object[] args)
         {
             return string.Format(formatter, args);
