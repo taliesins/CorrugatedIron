@@ -33,8 +33,9 @@ properties {
   
   $solution = @{}
   $solution.name = "$(Split-Path $($base.dir) -leaf)"
+  $solution.name = "CorrugatedIron"
   $solution.file = "$($base.dir)\$($solution.name).sln"
-  
+
   $release = @{}
   $release.dir = "$($base.dir)\release"
   
