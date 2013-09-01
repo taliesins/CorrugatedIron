@@ -19,7 +19,6 @@ RELEASE
 *.swp
 *.*~
 _Re*
-\.DS_Store
 *.userprefs
 *.pidb
 *.zip
@@ -32,3 +31,8 @@ test-results
 *.ncrunchsolution
 _NCrunch_*
 /*.cache
+*.DS_Store
+*.DotSettings.user
+*.sdf
+*.mdf
+*.ldf
