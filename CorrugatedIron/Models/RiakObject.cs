@@ -92,6 +92,11 @@ namespace CorrugatedIron.Models
             return new DateTime(epochTime, DateTimeKind.Utc);
         }
 
+        public void SetVectorClock(byte[] vectorClock)
+        {
+            VectorClock = vectorClock;
+        }
+
         public bool HasChanged
         {
             get { return _hashCode != CalculateHashCode(); }

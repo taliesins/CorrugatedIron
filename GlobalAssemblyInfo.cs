@@ -6,5 +6,5 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 
-[assembly: AssemblyVersion("1.4.0.1")]
-[assembly: AssemblyFileVersion("1.4.0.1")]
+[assembly: AssemblyVersion("1.4.1.3")]
+[assembly: AssemblyFileVersion("1.4.1.3")]
