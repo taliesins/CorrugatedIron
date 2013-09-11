@@ -26,16 +26,15 @@ properties {
   # BUILD_NUMBER is defined during CI builds. Make sure that this value
   # is changed if the CI system in use does not set this variable.
   # Make sure Semver versioning is used for the build number.
-  $build.version = if($env:BUILD_NUMBER) { $env:BUILD_NUMBER } else { "1.4.1.3" }
+  $build.version = if($env:BUILD_NUMBER) { $env:BUILD_NUMBER } else { "1.0.0.2" }
   
   $tools = @{}
   $tools.dir = "$($base.dir)\tools"
   
   $solution = @{}
   $solution.name = "$(Split-Path $($base.dir) -leaf)"
-  $solution.name = "CorrugatedIron"
   $solution.file = "$($base.dir)\$($solution.name).sln"
-
+  
   $release = @{}
   $release.dir = "$($base.dir)\release"
   

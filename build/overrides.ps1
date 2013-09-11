@@ -10,4 +10,6 @@
 
 properties {
   Write-Output "Loading override settings"
+  $solution.name = "CorrugatedIron"
+  $solution.file = "$($base.dir)\$($solution.name).sln"
 }
