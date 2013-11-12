@@ -33,5 +33,3 @@ using System.Reflection;
 // We'll use the revision number for hot fix release and probably leave the build
 
 // number there for when we do rc releases.
-[assembly: AssemblyVersion("1.4.2.1")] 
-[assembly: AssemblyFileVersion("1.4.2.1")]
