@@ -16,11 +16,23 @@
 
 using System.Collections.Generic;
 using CorrugatedIron.Models;
+using CorrugatedIron.Messages;
 
 namespace CorrugatedIron.Util
 {
     public static class RiakConstants
     {
+        public static class RiakEnterprise
+        {
+            public enum ReplicationMode
+            {
+                False = RpbBucketProps.RpbReplMode.FALSE,
+                Realtime = RpbBucketProps.RpbReplMode.REALTIME,
+                FullSync = RpbBucketProps.RpbReplMode.FULLSYNC,
+                True = RpbBucketProps.RpbReplMode.TRUE
+            }
+        }
+
         public static class ContentTypes
         {
             public const string Any = @"*/*";
@@ -34,7 +46,7 @@ namespace CorrugatedIron.Util
             public const string ImagePng = @"image/png";
             public const string ErlangBinary = @"application/x-erlang-binary";
             public const string Xml = @"application/xml";
-            public const string ProtocolBuffers = @"application/x-protobuf";
+            public const string ProtocolBuffers = ApplicationOctetStream; //@"application/x-protobuf";
         }
 
         public static class IndexSuffix

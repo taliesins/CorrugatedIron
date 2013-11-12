@@ -42,6 +42,16 @@ namespace CorrugatedIron.Models
         public List<IRiakPostCommitHook> PostCommitHooks { get; private set; }
         public bool? NotFoundOk { get; private set; }
         public bool? BasicQuorum { get; private set; }
+        /// <summary>
+        /// If the length of the vector clock is larger than BigVclock, vector clocks will be pruned.
+        /// </summary>
+        /// <remarks>See http://docs.basho.com/riak/latest/theory/concepts/Vector-Clocks/#Vector-Clock-Pruning </remarks>
+        public uint? BigVclock { get; private set; }
+        /// <summary>
+        /// If the length of the vector clock is smaller than SmallVclock, vector clocks will not be pruned.
+        /// </summary>
+        /// <remarks>See http://docs.basho.com/riak/latest/theory/concepts/Vector-Clocks/#Vector-Clock-Pruning </remarks>
+        public uint? SmallVclock { get; private set; }
         
         public bool? HasPrecommit { get; private set; }
         public bool? HasPostcommit { get; private set; }
@@ -85,6 +95,8 @@ namespace CorrugatedIron.Models
         /// </summary>
         /// <value>The PW value. Possible values include 'default', 'one', 'quorum', 'all', or any integer.</value>
         public uint? PwVal { get; private set; }
+
+        public RiakConstants.RiakEnterprise.ReplicationMode? ReplicationMode { get; private set; }
 
         /// <summary>
         /// An indicator of whether search indexing is enabled on the bucket.
@@ -216,6 +228,24 @@ namespace CorrugatedIron.Models
         public RiakBucketProperties SetBackend(string backend)
         {
             Backend = backend;
+            return this;
+        }
+
+        public RiakBucketProperties SetReplicationMode(RiakConstants.RiakEnterprise.ReplicationMode replicationMode)
+        {
+            ReplicationMode = replicationMode;
+            return this;
+        }
+
+        public RiakBucketProperties SetBigVclock(uint? bigVclock)
+        {
+            BigVclock = bigVclock;
+            return this;
+        }
+
+        public RiakBucketProperties SetSmallVclock(uint? smallVclock)
+        {
+            SmallVclock = smallVclock;
             return this;
         }
 
@@ -369,6 +399,8 @@ namespace CorrugatedIron.Models
             {
                 PostCommitHooks = postCommitHooks.Cast<JObject>().Select(LoadPostCommitHook).ToList();
             }
+
+            ReplicationMode = (RiakConstants.RiakEnterprise.ReplicationMode)props.Value<int?>("repl");
         }
 
         internal RiakBucketProperties(RpbBucketProps bucketProps)
@@ -407,6 +439,8 @@ namespace CorrugatedIron.Models
             {
                 PostCommitHooks = postCommitHooks.Select(LoadPostCommitHook).ToList();
             }
+
+            ReplicationMode = (RiakConstants.RiakEnterprise.ReplicationMode)bucketProps.repl;
         }
 
         private static IRiakPreCommitHook LoadPreCommitHook(RpbCommitHook hook)
