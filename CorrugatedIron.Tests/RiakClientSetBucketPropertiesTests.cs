@@ -14,6 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+using System.Threading.Tasks;
 using CorrugatedIron.Comms;
 using CorrugatedIron.Messages;
 using CorrugatedIron.Models;
@@ -91,7 +92,7 @@ namespace CorrugatedIron.Tests.RiakClientSetBucketPropertiesTests
         public void SetUp()
         {
             var result = RiakResult<RiakRestResponse>.Success(new RiakRestResponse { StatusCode = System.Net.HttpStatusCode.NoContent });
-            Cluster.ConnectionMock.Setup(m => m.RestRequest(It.IsAny<RiakRestRequest>())).Returns(result);
+            Cluster.ConnectionMock.Setup(m => m.RestRequest(It.IsAny<RiakRestRequest>()).Result).Returns(result);
 
             Response = Client.SetPbcBucketProperties("foo", new RiakBucketProperties().SetAllowMultiple(true).SetRVal("one"));
         }
@@ -113,7 +114,7 @@ namespace CorrugatedIron.Tests.RiakClientSetBucketPropertiesTests
         public void SetUp()
         {
             var result = RiakResult.Success();
-            Cluster.ConnectionMock.Setup(m => m.PbcWriteRead(It.IsAny<RpbSetBucketReq>(), MessageCode.SetBucketResp)).Returns(result);
+            Cluster.ConnectionMock.Setup(m => m.PbcWriteRead(It.IsAny<RpbSetBucketReq>(), MessageCode.SetBucketResp)).Returns(Task<RiakResult>.FromResult(result));
 
             Response = Client.SetPbcBucketProperties("foo", new RiakBucketProperties().SetAllowMultiple(true));
         }

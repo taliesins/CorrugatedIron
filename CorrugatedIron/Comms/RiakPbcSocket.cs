@@ -14,6 +14,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+using System.Threading.Tasks;
+using CorrugatedIron.Comms.AsyncSocket;
 using CorrugatedIron.Exceptions;
 using CorrugatedIron.Extensions;
 using CorrugatedIron.Messages;
@@ -28,36 +30,47 @@ namespace CorrugatedIron.Comms
 {
     internal class RiakPbcSocket : IDisposable
     {
-        private readonly string _server;
-        private readonly int _port;
+        private readonly DnsEndPoint _endPoint;
         private readonly int _receiveTimeout;
         private readonly int _sendTimeout;
         private static readonly Dictionary<MessageCode, Type> MessageCodeToTypeMap;
         private static readonly Dictionary<Type, MessageCode> TypeToMessageCodeMap;
         private Socket _pbcSocket;
 
-        private Socket PbcSocket
+        private readonly SocketAwaitable _awaitable =  new SocketAwaitable(new SocketAsyncEventArgs
         {
-            get
+            DisconnectReuseSocket = false
+        });
+
+        private async Task<Socket> GetSocket()
+        {
+            if (_pbcSocket != null)
             {
-                if(_pbcSocket == null)
-                {
-                    var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                    socket.NoDelay = true;
-                    socket.Connect(_server, _port);
-
-                    if(!socket.Connected)
-                    {
-                        throw new RiakException("Unable to connect to remote server: {0}:{1}".Fmt(_server, _port));
-                    }
-                    socket.ReceiveTimeout = _receiveTimeout;
-                    socket.SendTimeout = _sendTimeout;
-
-                    _pbcSocket = socket;
-
-                }
                 return _pbcSocket;
             }
+
+            var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+            {
+                NoDelay = true
+            };
+
+            _awaitable.EventArgs.UserToken = socket;
+            _awaitable.EventArgs.RemoteEndPoint = _endPoint;
+
+            await socket.ConnectAsync(_awaitable);
+
+            var errorCode = _awaitable.EventArgs.SocketError;
+            if (errorCode != SocketError.Success)
+            {
+                throw new RiakException("Unable to connect to remote server: {0}:{1} error code {2}".Fmt(_endPoint.Host, _endPoint.Port, errorCode));
+            }
+
+            socket.ReceiveTimeout = _receiveTimeout;
+            socket.SendTimeout = _sendTimeout;
+
+            _pbcSocket = socket;
+
+            return _pbcSocket;
         }
 
         public bool IsConnected
@@ -110,13 +123,12 @@ namespace CorrugatedIron.Comms
 
         public RiakPbcSocket(string server, int port, int receiveTimeout, int sendTimeout)
         {
-            _server = server;
-            _port = port;
+            _endPoint = new DnsEndPoint(server, port);
             _receiveTimeout = receiveTimeout;
             _sendTimeout = sendTimeout;
         }
 
-        public void Write(MessageCode messageCode)
+        public async void Write(MessageCode messageCode)
         {
             const int sizeSize = sizeof(int);
             const int codeSize = sizeof(byte);
@@ -128,18 +140,22 @@ namespace CorrugatedIron.Comms
             Array.Copy(size, messageBody, sizeSize);
             messageBody[sizeSize] = (byte)messageCode;
 
-            if(PbcSocket.Send(messageBody, headerSize, SocketFlags.None) == 0)
+            var socket = await GetSocket();
+
+            _awaitable.EventArgs.SetBuffer(messageBody, 0, messageBody.Length);
+            await socket.SendAsync(_awaitable);
+
+            if (_awaitable.EventArgs.SocketError != SocketError.Success)
             {
-                throw new RiakException("Failed to send data to server - Timed Out: {0}:{1}".Fmt(_server, _port));
+                throw new RiakException("Failed to send data to server - Timed Out: {0}:{1}".Fmt(_endPoint.Host, _endPoint.Port));
             }
         }
 
-        public void Write<T>(T message) where T : class
+        public async void Write<T>(T message) where T : class
         {
             const int sizeSize = sizeof(int);
             const int codeSize = sizeof(byte);
             const int headerSize = sizeSize + codeSize;
-            const int sendBufferSize = 1024 * 4;
             byte[] messageBody;
             long messageLength = 0;
 
@@ -163,30 +179,26 @@ namespace CorrugatedIron.Comms
             Array.Copy(size, messageBody, sizeSize);
             messageBody[sizeSize] = (byte)messageCode;
 
-            var bytesToSend = (int)messageLength;
-            var position = 0;
+            var socket = await GetSocket();
 
-            while (bytesToSend > 0)
+            _awaitable.EventArgs.SetBuffer(messageBody, 0, messageBody.Length);
+            await socket.SendAsync(_awaitable);
+
+            if (_awaitable.EventArgs.SocketError != SocketError.Success)
             {
-                var sent = PbcSocket.Send(messageBody, position, Math.Min(bytesToSend, sendBufferSize), SocketFlags.None);
-                if (sent == 0)
-                {
-                    throw new RiakException("Failed to send data to server - Timed Out: {0}:{1}".Fmt(_server, _port));
-                }
-                position += sent;
-                bytesToSend -= sent;
+                throw new RiakException("Failed to send data to server - Timed Out: {0}:{1}".Fmt(_endPoint.Host, _endPoint.Port));
             }
         }
 
-        public MessageCode Read(MessageCode expectedCode)
+        public async Task<MessageCode> Read(MessageCode expectedCode)
         {
-            var header = ReceiveAll(new byte[5]);
+            var header = await ReceiveAll(new byte[5]);
             var size = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(header, 0));
             var messageCode = (MessageCode)header[sizeof(int)];
 
             if(messageCode == MessageCode.ErrorResp)
             {
-                var error = DeserializeInstance<RpbErrorResp>(size);
+                var error = await DeserializeInstance<RpbErrorResp>(size);
                 throw new RiakException(error.errcode, error.errmsg.FromRiakString(), false);
             }
 
@@ -198,16 +210,16 @@ namespace CorrugatedIron.Comms
             return messageCode;
         }
 
-        public T Read<T>() where T : new()
+        public async Task<T> Read<T>() where T : new()
         {
-            var header = ReceiveAll(new byte[5]);
+            var header = await ReceiveAll(new byte[5]);
 
             var size = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(header, 0));
 
             var messageCode = (MessageCode)header[sizeof(int)];
             if(messageCode == MessageCode.ErrorResp)
             {
-                var error = DeserializeInstance<RpbErrorResp>(size);
+                var error = await DeserializeInstance<RpbErrorResp>(size);
                 throw new RiakException(error.errcode, error.errmsg.FromRiakString());
             }
 
@@ -224,28 +236,25 @@ namespace CorrugatedIron.Comms
                 throw new InvalidOperationException(string.Format("Attempt to decode message to type '{0}' when received type '{1}'.", typeof(T).Name, MessageCodeToTypeMap[messageCode].Name));
             }
 #endif
-            return DeserializeInstance<T>(size);
+            return await DeserializeInstance<T>(size);
         }
 
-        private byte[] ReceiveAll(byte[] resultBuffer)
+        private async Task<byte[]> ReceiveAll(byte[] resultBuffer)
         {
-            PbcSocket.ReceiveTimeout = 0;
-            int totalBytesReceived = 0;
-            int lengthToReceive = resultBuffer.Length;
-            while(lengthToReceive > 0)
+            var socket = await GetSocket();
+
+            _awaitable.EventArgs.SetBuffer(resultBuffer, 0, resultBuffer.Length);
+            await socket.ReceiveAsync(_awaitable);
+
+            if (_awaitable.EventArgs.SocketError != SocketError.Success)
             {
-                int bytesReceived = PbcSocket.Receive(resultBuffer, totalBytesReceived, lengthToReceive, 0);
-                if(bytesReceived == 0)
-                {
-                    throw new RiakException("Unable to read data from the source stream - Timed Out.");
-                }
-                totalBytesReceived += bytesReceived;
-                lengthToReceive -= bytesReceived;
+                throw new RiakException("Unable to read data from the source stream - remote server closed socket.");
             }
+
             return resultBuffer;
         }
 
-        private T DeserializeInstance<T>(int size)
+        private async Task<T> DeserializeInstance<T>(int size)
             where T : new()
         {
             if(size <= 1)
@@ -253,7 +262,7 @@ namespace CorrugatedIron.Comms
                 return new T();
             }
 
-            var resultBuffer = ReceiveAll(new byte[size - 1]);
+            var resultBuffer = await ReceiveAll(new byte[size - 1]);
 
             using(var memStream = new MemoryStream(resultBuffer))
             {
@@ -261,19 +270,24 @@ namespace CorrugatedIron.Comms
             }
         }
 
-        public void Disconnect()
+        public async void Disconnect()
         {
             if(_pbcSocket != null)
             {
-                _pbcSocket.Disconnect(false);
+                await _pbcSocket.DisconnectAsync(_awaitable);
                 _pbcSocket.Dispose();
                 _pbcSocket = null;
+
+                _awaitable.EventArgs.AcceptSocket = null;
             }
         }
 
         public void Dispose()
         {
             Disconnect();
+
+            _awaitable.EventArgs.Dispose();
+            _awaitable.EventArgs = null;
         }
     }
 }

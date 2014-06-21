@@ -44,13 +44,9 @@
     <AssemblyOriginatorKeyFile>..\Metadata\CorrugatedIron.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Condition=" '$(TargetFrameworkVersion)' == 'v4.5' " Include="Newtonsoft.Json, Version=6.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+    <Reference Include="Newtonsoft.Json, Version=6.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\Newtonsoft.Json.6.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
-    </Reference>
-    <Reference Condition=" '$(TargetFrameworkVersion)' != 'v4.5' " Include="Newtonsoft.Json, Version=6.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\Newtonsoft.Json.6.0.1\lib\net40\Newtonsoft.Json.dll</HintPath>
+      <HintPath>..\packages\Newtonsoft.Json.6.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="protobuf-net, Version=2.0.0.668, Culture=neutral, PublicKeyToken=257b51d87d2e4d67, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -74,11 +70,16 @@
     <Compile Include="..\Metadata\VersionInfo.cs">
       <Link>Properties\VersionInfo.cs</Link>
     </Compile>
+    <Compile Include="Comms\IRiakConnection.cs" />
+    <Compile Include="Comms\IRiakConnectionFactory.cs" />
     <Compile Include="Comms\IRiakConnectionManager.cs" />
+    <Compile Include="Comms\IRiakNode.cs" />
     <Compile Include="Comms\LoadBalancing\ILoadBalancingStrategy.cs" />
     <Compile Include="Comms\LoadBalancing\RoundRobinStrategy.cs" />
     <Compile Include="Comms\RiakOnTheFlyConnection.cs" />
     <Compile Include="Comms\RiakPbcSocket.cs" />
+    <Compile Include="Comms\AsyncSocket\SocketAwaitable.cs" />
+    <Compile Include="Comms\AsyncSocket\SocketExtensions.cs" />
     <Compile Include="Config\Fluent\RiakClusterConfiguration.cs" />
     <Compile Include="Config\Fluent\RiakExternalLoadBalancerConfiguration.cs" />
     <Compile Include="Config\Fluent\RiakNodeConfiguration.cs" />
@@ -92,7 +93,9 @@
     <Compile Include="Containers\Either.cs" />
     <Compile Include="Exceptions\RiakInvalidDataException.cs" />
     <Compile Include="Exceptions\RiakException.cs" />
+    <Compile Include="IRiakAsyncClient.cs" />
     <Compile Include="IRiakBatchClient.cs" />
+    <Compile Include="IRiakClient.cs" />
     <Compile Include="IRiakClusterManager.cs" />
     <Compile Include="IRiakEndPoint.cs" />
     <Compile Include="Models\Index\IRiakIndexResult.cs" />
