@@ -14,6 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+using CorrugatedIron.Comms.Sockets;
 using CorrugatedIron.Config;
 using System;
 using System.Collections.Concurrent;
@@ -25,17 +26,22 @@ namespace CorrugatedIron.Comms
     {
         private readonly List<IRiakConnection> _allResources;
         private readonly ConcurrentStack<IRiakConnection> _resources;
+        private readonly SocketAwaitablePool _pool;
+        private readonly BlockingBufferManager _bufferManager;
         private bool _disposing;
 
         public RiakConnectionPool(IRiakNodeConfiguration nodeConfig, IRiakConnectionFactory connFactory)
         {
             var poolSize = nodeConfig.PoolSize;
+            _pool = new SocketAwaitablePool(nodeConfig.PoolSize);
+            _bufferManager = new BlockingBufferManager(nodeConfig.BufferSize, nodeConfig.PoolSize);
+
             _allResources = new List<IRiakConnection>();
             _resources = new ConcurrentStack<IRiakConnection>();
 
             for(var i = 0; i < poolSize; ++i)
             {
-                var conn = connFactory.CreateConnection(nodeConfig);
+                var conn = connFactory.CreateConnection(nodeConfig, _pool, _bufferManager);
                 _allResources.Add(conn);
                 _resources.Push(conn);
             }

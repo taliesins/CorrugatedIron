@@ -24,7 +24,6 @@ using CorrugatedIron.Util;
 using NUnit.Framework;
 using System;
 using System.Linq;
-using System.Threading;
 
 namespace CorrugatedIron.Tests.Live.BucketPropertyTests
 {

@@ -14,15 +14,15 @@
 // specific language governing permissions and limitations
 // under the License.
 
+using System.IO;
 using System.Threading.Tasks;
-using CorrugatedIron.Comms.AsyncSocket;
+using CorrugatedIron.Comms.Sockets;
 using CorrugatedIron.Exceptions;
 using CorrugatedIron.Extensions;
 using CorrugatedIron.Messages;
 using ProtoBuf;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Net;
 using System.Net.Sockets;
 
@@ -30,52 +30,132 @@ namespace CorrugatedIron.Comms
 {
     internal class RiakPbcSocket : IDisposable
     {
+        private const int SocketConnectAttempts = 3;
         private readonly DnsEndPoint _endPoint;
         private readonly int _receiveTimeout;
         private readonly int _sendTimeout;
+        private readonly SocketAwaitablePool _socketAwaitablePool;
+        private readonly BlockingBufferManager _blockingBufferManager;
+
         private static readonly Dictionary<MessageCode, Type> MessageCodeToTypeMap;
         private static readonly Dictionary<Type, MessageCode> TypeToMessageCodeMap;
-        private Socket _pbcSocket;
 
-        private readonly SocketAwaitable _awaitable =  new SocketAwaitable(new SocketAsyncEventArgs
+        private Socket _socket;
+
+        public RiakPbcSocket(string server, int port, int receiveTimeout, int sendTimeout, SocketAwaitablePool socketAwaitablePool, BlockingBufferManager blockingBufferManager)
         {
-            DisconnectReuseSocket = false
-        });
-
-        private async Task<Socket> GetSocket()
-        {
-            if (_pbcSocket != null)
-            {
-                return _pbcSocket;
-            }
-
-            var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
-            {
-                NoDelay = true
-            };
-
-            _awaitable.EventArgs.UserToken = socket;
-            _awaitable.EventArgs.RemoteEndPoint = _endPoint;
-
-            await socket.ConnectAsync(_awaitable);
-
-            var errorCode = _awaitable.EventArgs.SocketError;
-            if (errorCode != SocketError.Success)
-            {
-                throw new RiakException("Unable to connect to remote server: {0}:{1} error code {2}".Fmt(_endPoint.Host, _endPoint.Port, errorCode));
-            }
-
-            socket.ReceiveTimeout = _receiveTimeout;
-            socket.SendTimeout = _sendTimeout;
-
-            _pbcSocket = socket;
-
-            return _pbcSocket;
+            _endPoint = new DnsEndPoint(server, port);
+            _receiveTimeout = receiveTimeout;
+            _sendTimeout = sendTimeout;
+            _socketAwaitablePool = socketAwaitablePool;
+            _blockingBufferManager = blockingBufferManager;
         }
+
+        private async Task ConnectAsync(Socket socket, EndPoint endPoint)
+        {
+            var awaitable = _socketAwaitablePool.Take();
+            try
+            {
+                awaitable.RemoteEndPoint = endPoint;
+
+                var result = SocketError.Fault;
+                for (var i = 0; i < SocketConnectAttempts; i++)
+                {
+                    result = await socket.ConnectAsync(awaitable);
+                    if (result == SocketError.Success)
+                    {
+                        break;
+                    }
+                }
+
+                if (result != SocketError.Success)
+                {
+                    throw new RiakException("Unable to connect to remote server: {0}:{1} error code {2}".Fmt(_endPoint.Host, _endPoint.Port, result));
+                }
+            }
+            finally
+            {
+                awaitable.Clear();
+                _socketAwaitablePool.Add(awaitable);
+            }
+        }
+
+        private async Task ReceiveAsync(Socket socket, ArraySegment<byte> buffer)
+        {
+            var awaitable = _socketAwaitablePool.Take();
+            try
+            {
+                awaitable.Buffer = buffer;
+
+                var result = await socket.ReceiveAsync(awaitable);
+
+                if (result != SocketError.Success)
+                {
+                    throw new RiakException("Unable to read data from the source stream: {0}:{1} error code {2}"
+                        .Fmt(_endPoint.Host, _endPoint.Port, result));
+                }
+
+                if (awaitable.Arguments.BytesTransferred == 0)
+                {
+                    throw new RiakException("Unable to read data from the source stream: {0}:{1} remote server closed connection"
+                        .Fmt(_endPoint.Host, _endPoint.Port));
+                }
+
+                if (awaitable.Buffer.Count != awaitable.Arguments.BytesTransferred)
+                {
+                    throw new RiakException("Unable to read data from the source stream: {0}:{1} error code expecting {2} bytes but only received {3}"
+                        .Fmt(_endPoint.Host, _endPoint.Port, result, awaitable.Buffer.Count));
+                }
+            }
+            finally
+            {
+                awaitable.Clear();
+                _socketAwaitablePool.Add(awaitable);
+            }
+        }
+
+        private async Task SendAsync(Socket socket, ArraySegment<byte> buffer)
+        {
+            var awaitable = _socketAwaitablePool.Take();
+            try
+            {
+                awaitable.Buffer = buffer;
+
+                while (true)
+                {
+                    var result = await socket.SendAsync(awaitable);
+
+                    if (result != SocketError.Success)
+                    {
+                        throw new RiakException("Failed to send data to server - Timed Out: {0}:{1} error code {2}".Fmt(_endPoint.Host, _endPoint.Port, result));
+                    }
+
+                    if (awaitable.Buffer.Count == awaitable.Transferred.Count) 
+                    {
+                        return; // Break if all the data is sent.
+                    } 
+
+                    // Set the buffer to send the remaining data.
+                    awaitable.Buffer = new ArraySegment<byte>(
+                        awaitable.Buffer.Array,
+                        awaitable.Buffer.Offset + awaitable.Transferred.Count,
+                        awaitable.Buffer.Count - awaitable.Transferred.Count);
+                }
+            }
+            finally
+            {
+                awaitable.Clear();
+                _socketAwaitablePool.Add(awaitable);
+            }
+        }
+
 
         public bool IsConnected
         {
-            get { return _pbcSocket != null && _pbcSocket.Connected; }
+            get
+            {
+                return _socket != null && _socket.Connected;
+            }
         }
 
         static RiakPbcSocket()
@@ -121,173 +201,221 @@ namespace CorrugatedIron.Comms
             }
         }
 
-        public RiakPbcSocket(string server, int port, int receiveTimeout, int sendTimeout)
+        private async Task<Socket> GetConnectedSocket()
         {
-            _endPoint = new DnsEndPoint(server, port);
-            _receiveTimeout = receiveTimeout;
-            _sendTimeout = sendTimeout;
+            if (_socket != null)
+            {
+                return _socket;
+            }
+
+            _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+            {
+                NoDelay = true,
+                ReceiveTimeout = _receiveTimeout,
+                SendTimeout = _sendTimeout
+            };
+
+            await ConnectAsync(_socket, _endPoint);
+
+            return _socket;
         }
 
-        public async void Write(MessageCode messageCode)
+        public async Task Write(MessageCode messageCode)
         {
             const int sizeSize = sizeof(int);
             const int codeSize = sizeof(byte);
             const int headerSize = sizeSize + codeSize;
 
-            var messageBody = new byte[headerSize];
-
-            var size = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(1));
-            Array.Copy(size, messageBody, sizeSize);
-            messageBody[sizeSize] = (byte)messageCode;
-
-            var socket = await GetSocket();
-
-            _awaitable.EventArgs.SetBuffer(messageBody, 0, messageBody.Length);
-            await socket.SendAsync(_awaitable);
-
-            if (_awaitable.EventArgs.SocketError != SocketError.Success)
+            var buffer = _blockingBufferManager.GetBuffer();
+            try
             {
-                throw new RiakException("Failed to send data to server - Timed Out: {0}:{1}".Fmt(_endPoint.Host, _endPoint.Port));
+                var size = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(codeSize));
+
+                var messageBody = new ArraySegment<byte>(
+                    buffer.Array,
+                    0,
+                    headerSize);
+
+                Array.Copy(size, messageBody.Array, sizeSize);
+                messageBody.Array[sizeSize] = (byte) messageCode;
+
+                var socket = await GetConnectedSocket();
+                await SendAsync(socket, messageBody);
+            }
+            finally
+            {
+                _blockingBufferManager.ReleaseBuffer(buffer);
             }
         }
 
-        public async void Write<T>(T message) where T : class
+        public async Task Write<T>(T message) where T : class
         {
             const int sizeSize = sizeof(int);
             const int codeSize = sizeof(byte);
             const int headerSize = sizeSize + codeSize;
-            byte[] messageBody;
-            long messageLength = 0;
-
-            using(var memStream = new MemoryStream())
-            {
-                // add a buffer to the start of the array to put the size and message code
-                memStream.Position += headerSize;
-                Serializer.Serialize(memStream, message);
-                messageBody = memStream.GetBuffer();
-                messageLength = memStream.Position;
-            }
-
-            // check to make sure something was written, otherwise we'll have to create a new array
-            if(messageLength == headerSize)
-            {
-                messageBody = new byte[headerSize];
-            }
 
             var messageCode = TypeToMessageCodeMap[typeof(T)];
-            var size = BitConverter.GetBytes(IPAddress.HostToNetworkOrder((int)messageLength - headerSize + 1));
-            Array.Copy(size, messageBody, sizeSize);
-            messageBody[sizeSize] = (byte)messageCode;
 
-            var socket = await GetSocket();
-
-            _awaitable.EventArgs.SetBuffer(messageBody, 0, messageBody.Length);
-            await socket.SendAsync(_awaitable);
-
-            if (_awaitable.EventArgs.SocketError != SocketError.Success)
+            if (message == null)
             {
-                throw new RiakException("Failed to send data to server - Timed Out: {0}:{1}".Fmt(_endPoint.Host, _endPoint.Port));
+                await Write(messageCode);
+                return;
+            }
+
+            var buffer = _blockingBufferManager.GetBuffer();
+            try
+            {
+                using (var stream = new ArraySegmentStream(buffer.Array))
+                {
+                    stream.Position += headerSize;
+                    Serializer.Serialize(stream, message);
+                    var messageLength = stream.Position;
+
+                    var size = BitConverter.GetBytes(IPAddress.HostToNetworkOrder((int)messageLength - sizeSize));
+                    Array.Copy(size, buffer.Array, sizeSize);
+                    buffer.Array[sizeSize] = (byte)messageCode;
+
+                    var messageBody = new ArraySegment<byte>(
+                        buffer.Array,
+                        0,
+                        (int)stream.Length);
+
+                    var socket = await GetConnectedSocket();
+                    await SendAsync(socket, messageBody);
+                }
+            }
+            finally
+            {
+                _blockingBufferManager.ReleaseBuffer(buffer);
             }
         }
 
         public async Task<MessageCode> Read(MessageCode expectedCode)
         {
-            var header = await ReceiveAll(new byte[5]);
-            var size = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(header, 0));
-            var messageCode = (MessageCode)header[sizeof(int)];
+            const int sizeSize = sizeof(int);
+            const int codeSize = sizeof(byte);
+            const int headerSize = sizeSize + codeSize;
 
-            if(messageCode == MessageCode.ErrorResp)
+            var buffer = _blockingBufferManager.GetBuffer();
+            try
             {
-                var error = await DeserializeInstance<RpbErrorResp>(size);
-                throw new RiakException(error.errcode, error.errmsg.FromRiakString(), false);
-            }
+                var socket = await GetConnectedSocket();
 
-            if (expectedCode != messageCode)
+                var headerBuffer = new ArraySegment<byte>(buffer.Array, 0, headerSize);
+
+                await ReceiveAsync(socket, headerBuffer);
+
+                var size = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(headerBuffer.Array, 0));
+                var messageCode = (MessageCode)headerBuffer.Array[sizeof(int)];
+
+                if (messageCode == MessageCode.ErrorResp)
+                {
+                    var errorBuffer = new ArraySegment<byte>(buffer.Array, headerSize, size-codeSize);
+                    await ReceiveAsync(socket, errorBuffer);
+
+                    using (var stream = new MemoryStream(errorBuffer.Array, errorBuffer.Offset, errorBuffer.Count))
+                    {
+                        var error = Serializer.Deserialize<RpbErrorResp>(stream);
+                        throw new RiakException(error.errcode, error.errmsg.FromRiakString(), false);
+                    }
+                }
+
+                if (expectedCode != messageCode)
+                {
+                    throw new RiakException("Expected return code {0} received {1}".Fmt(expectedCode, messageCode));
+                }
+
+                return messageCode;
+            }
+            finally
             {
-                throw new RiakException("Expected return code {0} received {1}".Fmt(expectedCode, messageCode));
+                _blockingBufferManager.ReleaseBuffer(buffer);
             }
-
-            return messageCode;
         }
 
         public async Task<T> Read<T>() where T : new()
         {
-            var header = await ReceiveAll(new byte[5]);
+            const int sizeSize = sizeof (int);
+            const int codeSize = sizeof (byte);
+            const int headerSize = sizeSize + codeSize;
 
-            var size = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(header, 0));
-
-            var messageCode = (MessageCode)header[sizeof(int)];
-            if(messageCode == MessageCode.ErrorResp)
+            var buffer = _blockingBufferManager.GetBuffer();
+            try
             {
-                var error = await DeserializeInstance<RpbErrorResp>(size);
-                throw new RiakException(error.errcode, error.errmsg.FromRiakString());
-            }
+                var socket = await GetConnectedSocket();
 
-            if(!MessageCodeToTypeMap.ContainsKey(messageCode))
-            {
-                throw new RiakInvalidDataException((byte)messageCode);
-            }
+                var headerBuffer = new ArraySegment<byte>(buffer.Array, 0, headerSize);
+
+                await ReceiveAsync(socket, headerBuffer);
+
+                var size = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(headerBuffer.Array, 0));
+                var messageCode = (MessageCode) headerBuffer.Array[sizeof (int)];
+
+                if (messageCode == MessageCode.ErrorResp)
+                {
+                    var errorBuffer = new ArraySegment<byte>(buffer.Array, headerSize, size - codeSize);
+                    await ReceiveAsync(socket, errorBuffer);
+
+                    using (var stream = new MemoryStream(errorBuffer.Array, errorBuffer.Offset, errorBuffer.Count))
+                    {
+                        var error = Serializer.Deserialize<RpbErrorResp>(stream);
+                        throw new RiakException(error.errcode, error.errmsg.FromRiakString(), false);
+                    }
+                }
+
+                if (!MessageCodeToTypeMap.ContainsKey(messageCode))
+                {
+                    throw new RiakInvalidDataException((byte) messageCode);
+                }
 #if DEBUG
-            // This message code validation is here to make sure that the caller
-            // is getting exactly what they expect. This "could" be removed from
-            // production code, but it's a good thing to have in here for dev.
-            if(MessageCodeToTypeMap[messageCode] != typeof(T))
-            {
-                throw new InvalidOperationException(string.Format("Attempt to decode message to type '{0}' when received type '{1}'.", typeof(T).Name, MessageCodeToTypeMap[messageCode].Name));
-            }
+                // This message code validation is here to make sure that the caller
+                // is getting exactly what they expect. This "could" be removed from
+                // production code, but it's a good thing to have in here for dev.
+                if (MessageCodeToTypeMap[messageCode] != typeof (T))
+                {
+                    throw new InvalidOperationException(
+                        string.Format("Attempt to decode message to type '{0}' when received type '{1}'.",
+                            typeof (T).Name, MessageCodeToTypeMap[messageCode].Name));
+                }
 #endif
-            return await DeserializeInstance<T>(size);
-        }
 
-        private async Task<byte[]> ReceiveAll(byte[] resultBuffer)
-        {
-            var socket = await GetSocket();
+                var bodyBuffer = new ArraySegment<byte>(buffer.Array, headerSize, size - codeSize);
+                await ReceiveAsync(socket, bodyBuffer);
 
-            _awaitable.EventArgs.SetBuffer(resultBuffer, 0, resultBuffer.Length);
-            await socket.ReceiveAsync(_awaitable);
-
-            if (_awaitable.EventArgs.SocketError != SocketError.Success)
-            {
-                throw new RiakException("Unable to read data from the source stream - remote server closed socket.");
+                using (var stream = new MemoryStream(bodyBuffer.Array, bodyBuffer.Offset, bodyBuffer.Count))
+                {
+                    var message = Serializer.Deserialize<T>(stream);
+                    return message;
+                }
             }
-
-            return resultBuffer;
-        }
-
-        private async Task<T> DeserializeInstance<T>(int size)
-            where T : new()
-        {
-            if(size <= 1)
+            finally
             {
-                return new T();
-            }
-
-            var resultBuffer = await ReceiveAll(new byte[size - 1]);
-
-            using(var memStream = new MemoryStream(resultBuffer))
-            {
-                return Serializer.Deserialize<T>(memStream);
+                _blockingBufferManager.ReleaseBuffer(buffer);
             }
         }
 
-        public async void Disconnect()
+        public async Task Disconnect()
         {
-            if(_pbcSocket != null)
-            {
-                await _pbcSocket.DisconnectAsync(_awaitable);
-                _pbcSocket.Dispose();
-                _pbcSocket = null;
+            if (_socket == null) return;
 
-                _awaitable.EventArgs.AcceptSocket = null;
+            var awaitable = _socketAwaitablePool.Take();
+            try
+            {
+                await _socket.DisonnectAsync(awaitable);
             }
+            finally
+            {
+                awaitable.Clear();
+                _socketAwaitablePool.Add(awaitable);
+            }
+
+            _socket.Dispose();
+            _socket = null;
         }
 
         public void Dispose()
         {
-            Disconnect();
-
-            _awaitable.EventArgs.Dispose();
-            _awaitable.EventArgs = null;
+            Disconnect().Wait();
         }
     }
 }

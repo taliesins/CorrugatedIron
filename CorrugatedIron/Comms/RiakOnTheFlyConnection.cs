@@ -14,6 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+using CorrugatedIron.Comms.Sockets;
 using CorrugatedIron.Config;
 using System;
 
@@ -23,19 +24,23 @@ namespace CorrugatedIron.Comms
     {
         private readonly IRiakNodeConfiguration _nodeConfig;
         private readonly IRiakConnectionFactory _connFactory;
+        private readonly SocketAwaitablePool _pool;
+        private readonly BlockingBufferManager _bufferManager;
         private bool _disposing;
 
         public RiakOnTheFlyConnection(IRiakNodeConfiguration nodeConfig, IRiakConnectionFactory connFactory)
         {
             _nodeConfig = nodeConfig;
             _connFactory = connFactory;
+            _pool = new SocketAwaitablePool(nodeConfig.PoolSize);
+            _bufferManager = new BlockingBufferManager(nodeConfig.BufferSize, nodeConfig.PoolSize);
         }
 
         public Tuple<bool, TResult> Consume<TResult>(Func<IRiakConnection, TResult> consumer)
         {
             if(_disposing) return Tuple.Create(false, default(TResult));
 
-            using (var conn = _connFactory.CreateConnection(_nodeConfig))
+            using (var conn = _connFactory.CreateConnection(_nodeConfig, _pool, _bufferManager))
             {
                 try
                 {
@@ -57,7 +62,7 @@ namespace CorrugatedIron.Comms
 
             try
             {
-                conn = _connFactory.CreateConnection(_nodeConfig);
+                conn = _connFactory.CreateConnection(_nodeConfig, _pool, _bufferManager);
                 var result = consumer(conn, conn.Dispose);
                 return Tuple.Create(true, result);
             }

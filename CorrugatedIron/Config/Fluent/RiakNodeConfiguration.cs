@@ -30,6 +30,7 @@ namespace CorrugatedIron.Config.Fluent
         private int _networkReadTimeout = 2000;
         private int _networkWriteTimeout = 2000;
         private bool _vnodeVclocks = true;
+        private int _bufferSize = 2097152;
 
         public string Name
         {
@@ -59,6 +60,11 @@ namespace CorrugatedIron.Config.Fluent
         public int PoolSize
         {
             get { return _poolSize; }
+        }
+
+        public int BufferSize
+        {
+            get { return _bufferSize; } 
         }
 
         public int NetworkReadTimeout
@@ -133,6 +139,12 @@ namespace CorrugatedIron.Config.Fluent
         public RiakNodeConfiguration SetVnodeVclocks(bool vnodeVclocks)
         {
             _vnodeVclocks = vnodeVclocks;
+            return this;
+        }
+
+        public RiakNodeConfiguration SetBufferSize(int bufferSize)
+        {
+            _bufferSize = bufferSize;
             return this;
         }
     }

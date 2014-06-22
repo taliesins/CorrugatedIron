@@ -15,6 +15,7 @@
 // under the License.
 
 using CorrugatedIron.Comms;
+using CorrugatedIron.Comms.Sockets;
 using CorrugatedIron.Config;
 using Moq;
 using System.Collections.Generic;
@@ -41,8 +42,9 @@ namespace CorrugatedIron.Tests.RiakClientTests
             NodeConfigMock = new Mock<IRiakNodeConfiguration>();
 
             ConnMock.Setup(m => m.PbcWriteRead<TRequest, TResult>(It.IsAny<TRequest>()).Result).Returns(() => Result);
-            ConnFactoryMock.Setup(m => m.CreateConnection(It.IsAny<IRiakNodeConfiguration>())).Returns(ConnMock.Object);
+            ConnFactoryMock.Setup(m => m.CreateConnection(It.IsAny<IRiakNodeConfiguration>(), It.IsAny<SocketAwaitablePool>(), It.IsAny<BlockingBufferManager>())).Returns(ConnMock.Object);
             NodeConfigMock.SetupGet(m => m.PoolSize).Returns(1);
+            NodeConfigMock.SetupGet(m => m.BufferSize).Returns(2097152);
             ClusterConfigMock.SetupGet(m => m.RiakNodes).Returns(new List<IRiakNodeConfiguration> { NodeConfigMock.Object });
             ClusterConfigMock.SetupGet(m => m.DefaultRetryCount).Returns(100);
             ClusterConfigMock.SetupGet(m => m.DefaultRetryWaitTime).Returns(100);

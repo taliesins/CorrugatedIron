@@ -15,7 +15,6 @@
 // under the License.
 
 using System.Threading.Tasks;
-using CorrugatedIron.Config;
 using CorrugatedIron.Exceptions;
 using CorrugatedIron.Extensions;
 using CorrugatedIron.Messages;
@@ -47,11 +46,10 @@ namespace CorrugatedIron.Comms
             ServicePointManager.ServerCertificateValidationCallback += ServerValidationCallback;
         }
 
-        public RiakConnection(IRiakNodeConfiguration nodeConfiguration)
+        public RiakConnection(string restRootUrl, RiakPbcSocket riakPbcSocket)
         {
-            _restRootUrl = @"{0}://{1}:{2}".Fmt(nodeConfiguration.RestScheme, nodeConfiguration.HostAddress, nodeConfiguration.RestPort);
-            _socket = new RiakPbcSocket(nodeConfiguration.HostAddress, nodeConfiguration.PbcPort, nodeConfiguration.NetworkReadTimeout,
-                nodeConfiguration.NetworkWriteTimeout);
+            _restRootUrl = restRootUrl;
+            _socket = riakPbcSocket;
         }
 
         public async Task<RiakResult<TResult>> PbcRead<TResult>()
@@ -134,7 +132,7 @@ namespace CorrugatedIron.Comms
         {
             try
             {
-                _socket.Write(request);
+                await _socket.Write(request);
                 return RiakResult.Success();
             }
             catch (RiakException ex)
@@ -156,7 +154,7 @@ namespace CorrugatedIron.Comms
         {
             try
             {
-                _socket.Write(messageCode);
+                await _socket.Write(messageCode);
                 return RiakResult.Success();
             }
             catch (RiakException ex)
@@ -345,10 +343,9 @@ namespace CorrugatedIron.Comms
             if(request.Body != null && request.Body.Length > 0)
             {
                 req.ContentLength = request.Body.Length;
-                using(var writer = req.GetRequestStream())
-                {
-                    writer.Write(request.Body, 0, request.Body.Length);
-                }
+
+                var writer = await req.GetRequestStreamAsync();
+                writer.Write(request.Body, 0, request.Body.Length);
             }
             else
             {
@@ -357,7 +354,7 @@ namespace CorrugatedIron.Comms
 
             try
             {
-                var response = (HttpWebResponse)req.GetResponse();
+                var response = (HttpWebResponse) await req.GetResponseAsync();
 
                 var result = new RiakRestResponse
                 {

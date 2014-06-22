@@ -14,18 +14,32 @@
 // specific language governing permissions and limitations
 // under the License.
 
+using CorrugatedIron.Comms.Sockets;
 using CorrugatedIron.Config;
+using CorrugatedIron.Extensions;
 
 namespace CorrugatedIron.Comms
 {
     public class RiakConnectionFactory : IRiakConnectionFactory
     {
-        public IRiakConnection CreateConnection(IRiakNodeConfiguration nodeConfiguration)
+        public IRiakConnection CreateConnection(IRiakNodeConfiguration nodeConfiguration, SocketAwaitablePool socketAwaitablePool,
+            BlockingBufferManager blockingBufferManager)
         {
+            var restRootUrl = @"{0}://{1}:{2}"
+                .Fmt(nodeConfiguration.RestScheme, nodeConfiguration.HostAddress, nodeConfiguration.RestPort);
+            
+            var socket = new RiakPbcSocket(
+                nodeConfiguration.HostAddress, 
+                nodeConfiguration.PbcPort, 
+                nodeConfiguration.NetworkReadTimeout,
+                nodeConfiguration.NetworkWriteTimeout,
+                socketAwaitablePool,
+                blockingBufferManager);
+
             // As pointless as this seems, it serves the purpose of decoupling the
             // creation of the connections to the node itself. Also means we can
             // pull it apart to test it
-            return new RiakConnection(nodeConfiguration);
+            return new RiakConnection(restRootUrl, socket);
         }
     }
 }

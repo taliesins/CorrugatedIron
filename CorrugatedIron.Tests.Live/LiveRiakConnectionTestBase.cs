@@ -25,8 +25,8 @@ namespace CorrugatedIron.Tests.Live.LiveRiakConnectionTests
     {
         protected const int TestClientId = 42;
         protected const string TestHost = "riak-test";
-        protected const int TestPbcPort = 8081;
-        protected const int TestHttpPort = 8091;
+        protected const int TestPbcPort = 8087;
+        protected const int TestHttpPort = 8098;
         protected const string TestBucket = "test_bucket";
         protected const string TestKey = "test_json";
         protected static readonly string TestJson;

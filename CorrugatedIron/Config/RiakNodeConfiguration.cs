@@ -62,6 +62,13 @@ namespace CorrugatedIron.Config
             set { this["poolSize"] = value; }
         }
 
+        [ConfigurationProperty("bufferSize", DefaultValue = 2097152, IsRequired = false)]
+        public int BufferSize
+        {
+            get { return (int)this["bufferSize"]; }
+            set { this["bufferSize"] = value; }
+        }
+
         // -- TODO: put this back in when we've got the idling stuff figured out
         //[ConfigurationProperty("idleTimeout", DefaultValue = 15000, IsRequired = false)]
         //public int IdleTimeout

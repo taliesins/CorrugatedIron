@@ -82,8 +82,12 @@
     <Compile Include="Comms\LoadBalancing\RoundRobinStrategy.cs" />
     <Compile Include="Comms\RiakOnTheFlyConnection.cs" />
     <Compile Include="Comms\RiakPbcSocket.cs" />
-    <Compile Include="Comms\AsyncSocket\SocketAwaitable.cs" />
-    <Compile Include="Comms\AsyncSocket\SocketExtensions.cs" />
+    <Compile Include="Comms\Sockets\ArraySegmentStream.cs" />
+    <Compile Include="Comms\Sockets\BlockingBufferManager.cs" />
+    <Compile Include="Comms\Sockets\SocketAwaitable.cs" />
+    <Compile Include="Comms\Sockets\SocketAwaitablePool.cs" />
+    <Compile Include="Comms\Sockets\SocketAwaiter.cs" />
+    <Compile Include="Comms\Sockets\SocketEx.cs" />
     <Compile Include="Config\Fluent\RiakClusterConfiguration.cs" />
     <Compile Include="Config\Fluent\RiakExternalLoadBalancerConfiguration.cs" />
     <Compile Include="Config\Fluent\RiakNodeConfiguration.cs" />
