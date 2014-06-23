@@ -166,6 +166,7 @@ namespace CorrugatedIron
 
                     return conn.PbcWriteRead<RpbGetReq, RpbGetResp>(req).Result;
                 }).ToList();
+
                 return Task.FromResult(RiakResult<IEnumerable<RiakResult<RpbGetResp>>>.Success(responses));
             });
 

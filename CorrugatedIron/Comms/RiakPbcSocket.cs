@@ -14,6 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using CorrugatedIron.Comms.Sockets;
@@ -304,15 +305,16 @@ namespace CorrugatedIron.Comms
                 var headerBuffer = new ArraySegment<byte>(buffer.Array, 0, headerSize);
 
                 await ReceiveAsync(socket, headerBuffer);
-
+                
                 var size = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(headerBuffer.Array, 0));
                 var messageCode = (MessageCode)headerBuffer.Array[sizeof(int)];
-
+                
                 if (messageCode == MessageCode.ErrorResp)
                 {
                     var errorBuffer = new ArraySegment<byte>(buffer.Array, headerSize, size-codeSize);
-                    await ReceiveAsync(socket, errorBuffer);
 
+                    await ReceiveAsync(socket, errorBuffer);
+                    
                     using (var stream = new MemoryStream(errorBuffer.Array, errorBuffer.Offset, errorBuffer.Count))
                     {
                         var error = Serializer.Deserialize<RpbErrorResp>(stream);
@@ -347,15 +349,16 @@ namespace CorrugatedIron.Comms
                 var headerBuffer = new ArraySegment<byte>(buffer.Array, 0, headerSize);
 
                 await ReceiveAsync(socket, headerBuffer);
-
+                
                 var size = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(headerBuffer.Array, 0));
                 var messageCode = (MessageCode) headerBuffer.Array[sizeof (int)];
 
                 if (messageCode == MessageCode.ErrorResp)
                 {
                     var errorBuffer = new ArraySegment<byte>(buffer.Array, headerSize, size - codeSize);
-                    await ReceiveAsync(socket, errorBuffer);
 
+                    await ReceiveAsync(socket, errorBuffer);
+ 
                     using (var stream = new MemoryStream(errorBuffer.Array, errorBuffer.Offset, errorBuffer.Count))
                     {
                         var error = Serializer.Deserialize<RpbErrorResp>(stream);
@@ -379,9 +382,15 @@ namespace CorrugatedIron.Comms
                 }
 #endif
 
-                var bodyBuffer = new ArraySegment<byte>(buffer.Array, headerSize, size - codeSize);
-                await ReceiveAsync(socket, bodyBuffer);
+                if (size - codeSize <= 1)
+                {
+                    return new T();
+                }
 
+                var bodyBuffer = new ArraySegment<byte>(buffer.Array, headerSize, size - codeSize);
+
+                await ReceiveAsync(socket, bodyBuffer);
+ 
                 using (var stream = new MemoryStream(bodyBuffer.Array, bodyBuffer.Offset, bodyBuffer.Count))
                 {
                     var message = Serializer.Deserialize<T>(stream);

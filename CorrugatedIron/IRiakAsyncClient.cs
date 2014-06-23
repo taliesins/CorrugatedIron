@@ -6,7 +6,6 @@ using CorrugatedIron.Models;
 using CorrugatedIron.Models.Index;
 using CorrugatedIron.Models.MapReduce;
 using CorrugatedIron.Models.Search;
-using CorrugatedIron.Util;
 
 namespace CorrugatedIron
 {

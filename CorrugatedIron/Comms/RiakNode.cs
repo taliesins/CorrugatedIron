@@ -40,40 +40,40 @@ namespace CorrugatedIron.Comms
             }
         }
 
-        public Task<RiakResult> UseConnection(Func<IRiakConnection, Task<RiakResult>> useFun)
+        public async Task<RiakResult> UseConnection(Func<IRiakConnection, Task<RiakResult>> useFun)
         {
-            if (_disposing) return Task.FromResult(RiakResult.Error(ResultCode.ShuttingDown, "Connection is shutting down", true));
+            if (_disposing) return RiakResult.Error(ResultCode.ShuttingDown, "Connection is shutting down", true);
 
             var response = _connections.Consume(useFun);
             if (response.Item1)
             {
-                return response.Item2;
+                return await response.Item2;
             }
-            return Task.FromResult(RiakResult.Error(ResultCode.NoConnections, "Unable to acquire connection", true));
+            return RiakResult.Error(ResultCode.NoConnections, "Unable to acquire connection", true);
         }
 
-        public Task<RiakResult<TResult>> UseConnection<TResult>(Func<IRiakConnection, Task<RiakResult<TResult>>> useFun)
+        public async Task<RiakResult<TResult>> UseConnection<TResult>(Func<IRiakConnection, Task<RiakResult<TResult>>> useFun)
         {
-            if (_disposing) return Task.FromResult(RiakResult<TResult>.Error(ResultCode.ShuttingDown, "Connection is shutting down", true));
+            if (_disposing) return RiakResult<TResult>.Error(ResultCode.ShuttingDown, "Connection is shutting down", true);
 
             var response = _connections.Consume(useFun);
             if (response.Item1)
             {
-                return response.Item2;
+                return await response.Item2;
             }
-            return Task.FromResult(RiakResult<TResult>.Error(ResultCode.NoConnections, "Unable to acquire connection", true));
+            return RiakResult<TResult>.Error(ResultCode.NoConnections, "Unable to acquire connection", true);
         }
 
-        public Task<RiakResult<IEnumerable<TResult>>> UseDelayedConnection<TResult>(Func<IRiakConnection, Action, Task<RiakResult<IEnumerable<TResult>>>> useFun)
+        public async Task<RiakResult<IEnumerable<TResult>>> UseDelayedConnection<TResult>(Func<IRiakConnection, Action, Task<RiakResult<IEnumerable<TResult>>>> useFun)
         {
-            if(_disposing) return Task.FromResult(RiakResult<IEnumerable<TResult>>.Error(ResultCode.ShuttingDown, "Connection is shutting down", true));
+            if(_disposing) return RiakResult<IEnumerable<TResult>>.Error(ResultCode.ShuttingDown, "Connection is shutting down", true);
 
             var response = _connections.DelayedConsume(useFun);
             if(response.Item1)
             {
-                return response.Item2;
+                return await response.Item2;
             }
-            return Task.FromResult(RiakResult<IEnumerable<TResult>>.Error(ResultCode.NoConnections, "Unable to acquire connection", true));
+            return RiakResult<IEnumerable<TResult>>.Error(ResultCode.NoConnections, "Unable to acquire connection", true);
         }
 
         public void Dispose()

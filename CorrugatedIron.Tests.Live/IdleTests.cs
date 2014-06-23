@@ -15,7 +15,6 @@
 // under the License.
 
 using System;
-using System.Runtime.Remoting.Messaging;
 using System.Threading.Tasks;
 using CorrugatedIron.Comms;
 using CorrugatedIron.Tests.Extensions;

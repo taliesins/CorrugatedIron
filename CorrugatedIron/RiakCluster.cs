@@ -197,7 +197,7 @@ namespace CorrugatedIron
             }
         }
 
-        private void NodeMonitor()
+        private async void NodeMonitor()
         {
             while (!_disposing)
             {
@@ -205,7 +205,7 @@ namespace CorrugatedIron
                 IRiakNode node = null;
                 while (_offlineNodes.TryDequeue(out node) && !_disposing)
                 {
-                    var result = node.UseConnection(c => c.PbcWriteRead(MessageCode.PingReq, MessageCode.PingResp)).Result;
+                    var result = await node.UseConnection(c => c.PbcWriteRead(MessageCode.PingReq, MessageCode.PingResp));
 
                     if (result.IsSuccess)
                     {
