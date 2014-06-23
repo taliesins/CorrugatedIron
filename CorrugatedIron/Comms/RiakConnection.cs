@@ -97,7 +97,7 @@ namespace CorrugatedIron.Comms
             }
         }
 
-        public RiakResult<IEnumerable<RiakResult<TResult>>> PbcRepeatRead<TResult>(Func<RiakResult<TResult>, bool> repeatRead)
+        public async Task<RiakResult<IEnumerable<RiakResult<TResult>>>> PbcRepeatRead<TResult>(Func<RiakResult<TResult>, bool> repeatRead)
             where TResult : class, new()
         {
             var results = new List<RiakResult<TResult>>();
@@ -216,32 +216,32 @@ namespace CorrugatedIron.Comms
             return RiakResult.Error(writeResult.ResultCode, writeResult.ErrorMessage, writeResult.NodeOffline);
         }
 
-        public RiakResult<IEnumerable<RiakResult<TResult>>> PbcWriteRead<TRequest, TResult>(TRequest request,
+        public async Task<RiakResult<IEnumerable<RiakResult<TResult>>>> PbcWriteRead<TRequest, TResult>(TRequest request,
             Func<RiakResult<TResult>, bool> repeatRead)
             where TRequest : class
             where TResult : class, new()
         {
-            var writeResult = PbcWrite(request).Result;
+            var writeResult = await PbcWrite(request);
             if(writeResult.IsSuccess)
             {
-                return PbcRepeatRead(repeatRead);
+                return await PbcRepeatRead(repeatRead);
             }
             return RiakResult<IEnumerable<RiakResult<TResult>>>.Error(writeResult.ResultCode, writeResult.ErrorMessage, writeResult.NodeOffline);
         }
 
-        public RiakResult<IEnumerable<RiakResult<TResult>>> PbcWriteRead<TResult>(MessageCode messageCode,
+        public async Task<RiakResult<IEnumerable<RiakResult<TResult>>>> PbcWriteRead<TResult>(MessageCode messageCode,
             Func<RiakResult<TResult>, bool> repeatRead)
             where TResult : class, new()
         {
-            var writeResult = PbcWrite(messageCode).Result;
+            var writeResult = await PbcWrite(messageCode);
             if(writeResult.IsSuccess)
             {
-                return PbcRepeatRead(repeatRead);
+                return await PbcRepeatRead(repeatRead);
             }
             return RiakResult<IEnumerable<RiakResult<TResult>>>.Error(writeResult.ResultCode, writeResult.ErrorMessage, writeResult.NodeOffline);
         }
 
-        public RiakResult<IEnumerable<RiakResult<TResult>>> PbcStreamRead<TResult>(Func<RiakResult<TResult>, bool> repeatRead, Action onFinish)
+        public async Task<RiakResult<IEnumerable<RiakResult<TResult>>>> PbcStreamRead<TResult>(Func<RiakResult<TResult>, bool> repeatRead, Action onFinish)
             where TResult : class, new()
         {
             var streamer = PbcStreamReadIterator(repeatRead, onFinish);
@@ -267,7 +267,7 @@ namespace CorrugatedIron.Comms
             yield return result;
         }
 
-        public RiakResult<IEnumerable<RiakResult<TResult>>> PbcWriteStreamRead<TRequest, TResult>(TRequest request,
+        public async Task<RiakResult<IEnumerable<RiakResult<TResult>>>> PbcWriteStreamRead<TRequest, TResult>(TRequest request,
             Func<RiakResult<TResult>, bool> repeatRead, Action onFinish)
             where TRequest : class
             where TResult : class, new()
@@ -276,7 +276,7 @@ namespace CorrugatedIron.Comms
             return RiakResult<IEnumerable<RiakResult<TResult>>>.Success(streamer);
         }
 
-        public RiakResult<IEnumerable<RiakResult<TResult>>> PbcWriteStreamRead<TResult>(MessageCode messageCode,
+        public async Task<RiakResult<IEnumerable<RiakResult<TResult>>>> PbcWriteStreamRead<TResult>(MessageCode messageCode,
             Func<RiakResult<TResult>, bool> repeatRead, Action onFinish)
             where TResult : class, new()
         {

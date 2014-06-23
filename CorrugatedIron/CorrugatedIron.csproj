@@ -251,6 +251,7 @@
     <Compile Include="Models\Search\Token.cs" />
     <Compile Include="Models\Search\UnaryTerm.cs" />
     <Compile Include="Models\Index\SecondaryIndex.cs" />
+    <Compile Include="ResultCode.cs" />
     <Compile Include="RiakAsyncClient.cs" />
     <Compile Include="RiakClient.cs" />
     <Compile Include="Comms\RiakConnection.cs" />

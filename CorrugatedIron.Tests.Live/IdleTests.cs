@@ -14,6 +14,9 @@
 // specific language governing permissions and limitations
 // under the License.
 
+using System;
+using System.Runtime.Remoting.Messaging;
+using System.Threading.Tasks;
 using CorrugatedIron.Comms;
 using CorrugatedIron.Tests.Extensions;
 using CorrugatedIron.Tests.Live.LiveRiakConnectionTests;
@@ -32,7 +35,10 @@ namespace CorrugatedIron.Tests.Live.IdleTests
 
         private IRiakConnection GetIdleConnection()
         {
-            var result = Cluster.UseConnection(RiakResult<IRiakConnection>.Success, 1);
+            Func<IRiakConnection, Task<RiakResult<IRiakConnection>>> runFun = (x)=>Task.FromResult(RiakResult<IRiakConnection>.Success(x));
+
+            var result = Cluster.UseConnection(runFun, 1).Result;
+
             //System.Threading.Thread.Sleep(ClusterConfig.RiakNodes[0].IdleTimeout + 1000);
             return result.Value;
         }

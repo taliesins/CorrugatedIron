@@ -35,25 +35,25 @@ namespace CorrugatedIron.Comms
 
         Task<RiakResult> PbcWriteRead(MessageCode messageCode, MessageCode expectedMessageCode);
 
-        RiakResult<IEnumerable<RiakResult<TResult>>> PbcRepeatRead<TResult>(Func<RiakResult<TResult>, bool> repeatRead)
+        Task<RiakResult<IEnumerable<RiakResult<TResult>>>> PbcRepeatRead<TResult>(Func<RiakResult<TResult>, bool> repeatRead)
             where TResult : class, new();
 
-        RiakResult<IEnumerable<RiakResult<TResult>>> PbcWriteRead<TResult>(MessageCode messageCode, Func<RiakResult<TResult>, bool> repeatRead)
+        Task<RiakResult<IEnumerable<RiakResult<TResult>>>> PbcWriteRead<TResult>(MessageCode messageCode, Func<RiakResult<TResult>, bool> repeatRead)
             where TResult : class, new();
 
-        RiakResult<IEnumerable<RiakResult<TResult>>> PbcWriteRead<TRequest, TResult>(TRequest request, Func<RiakResult<TResult>, bool> repeatRead)
+        Task<RiakResult<IEnumerable<RiakResult<TResult>>>> PbcWriteRead<TRequest, TResult>(TRequest request, Func<RiakResult<TResult>, bool> repeatRead)
             where TRequest : class
             where TResult : class, new();
 
-        RiakResult<IEnumerable<RiakResult<TResult>>> PbcStreamRead<TResult>(Func<RiakResult<TResult>, bool> repeatRead, Action onFinish)
+        Task<RiakResult<IEnumerable<RiakResult<TResult>>>> PbcStreamRead<TResult>(Func<RiakResult<TResult>, bool> repeatRead, Action onFinish)
             where TResult : class, new();
 
-        RiakResult<IEnumerable<RiakResult<TResult>>> PbcWriteStreamRead<TRequest, TResult>(TRequest request,
+        Task<RiakResult<IEnumerable<RiakResult<TResult>>>> PbcWriteStreamRead<TRequest, TResult>(TRequest request,
             Func<RiakResult<TResult>, bool> repeatRead, Action onFinish)
             where TRequest : class
             where TResult : class, new();
 
-        RiakResult<IEnumerable<RiakResult<TResult>>> PbcWriteStreamRead<TResult>(MessageCode messageCode,
+        Task<RiakResult<IEnumerable<RiakResult<TResult>>>> PbcWriteStreamRead<TResult>(MessageCode messageCode,
             Func<RiakResult<TResult>, bool> repeatRead, Action onFinish)
             where TResult : class, new();
 

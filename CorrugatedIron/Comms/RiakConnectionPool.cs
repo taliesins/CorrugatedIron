@@ -14,6 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+using System.Threading.Tasks;
 using CorrugatedIron.Comms.Sockets;
 using CorrugatedIron.Config;
 using System;
@@ -47,9 +48,9 @@ namespace CorrugatedIron.Comms
             }
         }
 
-        public Tuple<bool, TResult> Consume<TResult>(Func<IRiakConnection, TResult> consumer)
+        public Tuple<bool, Task<TResult>> Consume<TResult>(Func<IRiakConnection, Task<TResult>> consumer)
         {
-            if(_disposing) return Tuple.Create(false, default(TResult));
+            if (_disposing) return Tuple.Create<bool, Task<TResult>>(false, null);
 
             IRiakConnection instance = null;
             try
@@ -62,7 +63,7 @@ namespace CorrugatedIron.Comms
             }
             catch(Exception)
             {
-                return Tuple.Create(false, default(TResult));
+                return Tuple.Create<bool, Task<TResult>>(false, null);
             }
             finally
             {
@@ -72,12 +73,12 @@ namespace CorrugatedIron.Comms
                 }
             }
 
-            return Tuple.Create(false, default(TResult));
+            return Tuple.Create<bool, Task<TResult>>(false, null);
         }
 
-        public Tuple<bool, TResult> DelayedConsume<TResult>(Func<IRiakConnection, Action, TResult> consumer)
+        public Tuple<bool, Task<TResult>> DelayedConsume<TResult>(Func<IRiakConnection, Action, Task<TResult>> consumer)
         {
-            if(_disposing) return Tuple.Create(false, default(TResult));
+            if (_disposing) return Tuple.Create<bool, Task<TResult>>(false, null);
 
             IRiakConnection instance = null;
             try
@@ -101,10 +102,10 @@ namespace CorrugatedIron.Comms
                 {
                     _resources.Push(instance);
                 }
-                return Tuple.Create(false, default(TResult));
+                return Tuple.Create<bool, Task<TResult>>(false, null);
             }
 
-            return Tuple.Create(false, default(TResult));
+            return Tuple.Create<bool, Task<TResult>>(false, null);
         }
 
         public void Dispose()

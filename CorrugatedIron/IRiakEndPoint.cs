@@ -14,6 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+using System.Threading.Tasks;
 using CorrugatedIron.Comms;
 using System;
 using System.Collections.Generic;
@@ -26,13 +27,8 @@ namespace CorrugatedIron
 
         IRiakClient CreateClient();
 
-        [Obsolete("Clients no longer need a seed value, use CreateClient() instead. This will be removed in CorrugatedIron 1.5")]
-        IRiakClient CreateClient(string seed);
-
-        RiakResult<TResult> UseConnection<TResult>(Func<IRiakConnection, RiakResult<TResult>> useFun, int retryAttempts);
-        RiakResult UseConnection(Func<IRiakConnection, RiakResult> useFun, int retryAttempts);
-
-        RiakResult<IEnumerable<TResult>> UseDelayedConnection<TResult>(Func<IRiakConnection, Action, RiakResult<IEnumerable<TResult>>> useFun, int retryAttempts)
-            where TResult : RiakResult;
+        Task<RiakResult> UseConnection(Func<IRiakConnection, Task<RiakResult>> useFun, int retryAttempts);
+        Task<RiakResult<TResult>> UseConnection<TResult>(Func<IRiakConnection, Task<RiakResult<TResult>>> useFun, int retryAttempts);
+        Task<RiakResult<IEnumerable<TResult>>> UseDelayedConnection<TResult>(Func<IRiakConnection, Action, Task<RiakResult<IEnumerable<TResult>>>> useFun, int retryAttempts);
     }
 }

@@ -14,6 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+using System.Threading.Tasks;
 using CorrugatedIron.Comms;
 using CorrugatedIron.Config;
 using System;
@@ -49,33 +50,61 @@ namespace CorrugatedIron
             get { return _lbConfiguration.DefaultRetryCount; }
         }
 
-        protected override TRiakResult UseConnection<TRiakResult>(Func<IRiakConnection, TRiakResult> useFun, Func<ResultCode, string, bool, TRiakResult> onError, int retryAttempts)
+        protected async override Task<RiakResult> UseConnection(Func<IRiakConnection, Task<RiakResult>> useFun, Func<ResultCode, string, bool, RiakResult> onError, int retryAttempts)
         {
-            if(retryAttempts < 0)
+            if (retryAttempts < 0)
             {
                 return onError(ResultCode.NoRetries, "Unable to access a connection on the cluster.", true);
             }
-            if(_disposing)
+            if (_disposing)
             {
                 return onError(ResultCode.ShuttingDown, "System currently shutting down", true);
             }
 
             var node = _node;
 
-            if(node != null)
+            if (node != null)
             {
-                var result = node.UseConnection(useFun);
-                if(!result.IsSuccess)
+                var result = await node.UseConnection(useFun);
+                if (!result.IsSuccess)
                 {
                     Thread.Sleep(RetryWaitTime);
-                    return UseConnection(useFun, onError, retryAttempts - 1);
+                    return await UseConnection(useFun, onError, retryAttempts - 1);
                 }
-                return (TRiakResult)result;
+
+                return result;
             }
             return onError(ResultCode.ClusterOffline, "Unable to access functioning Riak node", true);
         }
 
-        public override RiakResult<IEnumerable<TResult>> UseDelayedConnection<TResult>(Func<IRiakConnection, Action, RiakResult<IEnumerable<TResult>>> useFun, int retryAttempts)
+        protected async override Task<RiakResult<T>> UseConnection<T>(Func<IRiakConnection, Task<RiakResult<T>>> useFun, Func<ResultCode, string, bool, RiakResult<T>> onError, int retryAttempts)
+        {
+            if (retryAttempts < 0)
+            {
+                return onError(ResultCode.NoRetries, "Unable to access a connection on the cluster.", true);
+            }
+            if (_disposing)
+            {
+                return onError(ResultCode.ShuttingDown, "System currently shutting down", true);
+            }
+
+            var node = _node;
+
+            if (node != null)
+            {
+                var result = await node.UseConnection(useFun);
+                if (!result.IsSuccess)
+                {
+                    Thread.Sleep(RetryWaitTime);
+                    return await UseConnection(useFun, onError, retryAttempts - 1);
+                }
+
+                return result;
+            }
+            return onError(ResultCode.ClusterOffline, "Unable to access functioning Riak node", true);
+        }
+
+        public override async Task<RiakResult<IEnumerable<TResult>>> UseDelayedConnection<TResult>(Func<IRiakConnection, Action, Task<RiakResult<IEnumerable<TResult>>>> useFun, int retryAttempts)
         {
             if(retryAttempts < 0)
             {
@@ -90,11 +119,11 @@ namespace CorrugatedIron
 
             if(node != null)
             {
-                var result = node.UseDelayedConnection(useFun);
+                var result = await node.UseDelayedConnection(useFun);
                 if(!result.IsSuccess)
                 {
                     Thread.Sleep(RetryWaitTime);
-                    return UseDelayedConnection(useFun, retryAttempts - 1);
+                    return await UseDelayedConnection(useFun, retryAttempts - 1);
                 }
                 return result;
             }

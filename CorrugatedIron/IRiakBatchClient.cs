@@ -18,7 +18,6 @@ using CorrugatedIron.Models;
 using CorrugatedIron.Models.Index;
 using CorrugatedIron.Models.MapReduce;
 using CorrugatedIron.Models.Search;
-using CorrugatedIron.Util;
 using System.Collections.Generic;
 using System.Numerics;
 
@@ -26,7 +25,6 @@ namespace CorrugatedIron
 {
     public interface IRiakBatchClient
     {
-        int RetryCount { get; set; }
         RiakResult Ping();
 
         RiakResult<RiakObject> Get(RiakObjectId objectId, RiakGetOptions options = null);
@@ -43,7 +41,7 @@ namespace CorrugatedIron
         RiakResult Delete(string bucket, string key, RiakDeleteOptions options = null);
         RiakResult Delete(RiakObjectId objectId, RiakDeleteOptions options = null);
         IEnumerable<RiakResult> Delete(IEnumerable<RiakObjectId> objectIds, RiakDeleteOptions options = null);
-        IEnumerable<RiakResult> DeleteBucket(string bucket, uint rwVal = RiakConstants.Defaults.RVal);
+        IEnumerable<RiakResult> DeleteBucket(string bucket, RiakDeleteOptions options = null);
 
         RiakResult<RiakSearchResult> Search(RiakSearchRequest search);
 
@@ -74,8 +72,6 @@ namespace CorrugatedIron
         RiakResult<RiakStreamedIndexResult> StreamIndexGet(string bucket, string indexName, string minValue, string maxValue, RiakIndexGetOptions options = null);
 
         RiakResult<IList<string>> ListKeysFromIndex(string bucket);
-
-        //RiakResult<RiakSearchResult> Search(Action<RiakSearchRequest> prepareRequest)
     }
 
 }

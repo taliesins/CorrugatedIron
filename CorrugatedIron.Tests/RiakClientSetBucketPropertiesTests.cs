@@ -46,28 +46,27 @@ namespace CorrugatedIron.Tests.RiakClientSetBucketPropertiesTests
             return new Mock<IRiakClient>().Object;
         }
 
+        public Task<RiakResult> UseConnection(Func<IRiakConnection, Task<RiakResult>> useFun, int retryAttempts)
+        {
+            return useFun(ConnectionMock.Object);
+        }
+
+        public Task<RiakResult<TResult>> UseConnection<TResult>(Func<IRiakConnection, Task<RiakResult<TResult>>> useFun, int retryAttempts)
+        {
+            return useFun(ConnectionMock.Object);
+        }
+
+        public Task<RiakResult<IEnumerable<TResult>>> UseDelayedConnection<TResult>(Func<IRiakConnection, Action, Task<RiakResult<IEnumerable<TResult>>>> useFun, int retryAttempts)
+        {
+            throw new NotImplementedException();
+        }
+
         public IRiakClient CreateClient(string seed)
         {
             return new Mock<IRiakClient>().Object;
         }
 
         public int RetryWaitTime { get; set; }
-
-        public RiakResult<TResult> UseConnection<TResult>(Func<IRiakConnection, RiakResult<TResult>> useFun, int retryAttempts)
-        {
-            return useFun(ConnectionMock.Object);
-        }
-
-        public RiakResult UseConnection(Func<IRiakConnection, RiakResult> useFun, int retryAttempts)
-        {
-            return useFun(ConnectionMock.Object);
-        }
-
-        public RiakResult<IEnumerable<TResult>> UseDelayedConnection<TResult>(Func<IRiakConnection, Action, RiakResult<IEnumerable<TResult>>> useFun, int retryAttempts)
-            where TResult : RiakResult
-        {
-            throw new NotImplementedException();
-        }
     }
 
     public abstract class RiakClientSetBucketPropertiesTestBase
@@ -94,7 +93,7 @@ namespace CorrugatedIron.Tests.RiakClientSetBucketPropertiesTests
             var result = RiakResult<RiakRestResponse>.Success(new RiakRestResponse { StatusCode = System.Net.HttpStatusCode.NoContent });
             Cluster.ConnectionMock.Setup(m => m.RestRequest(It.IsAny<RiakRestRequest>()).Result).Returns(result);
 
-            Response = Client.SetPbcBucketProperties("foo", new RiakBucketProperties().SetAllowMultiple(true).SetRVal("one"));
+            Response = Client.SetBucketProperties("foo", new RiakBucketProperties().SetAllowMultiple(true).SetRVal("one"));
         }
 
         [Test]
@@ -116,7 +115,7 @@ namespace CorrugatedIron.Tests.RiakClientSetBucketPropertiesTests
             var result = RiakResult.Success();
             Cluster.ConnectionMock.Setup(m => m.PbcWriteRead(It.IsAny<RpbSetBucketReq>(), MessageCode.SetBucketResp)).Returns(Task<RiakResult>.FromResult(result));
 
-            Response = Client.SetPbcBucketProperties("foo", new RiakBucketProperties().SetAllowMultiple(true));
+            Response = Client.SetBucketProperties("foo", new RiakBucketProperties().SetAllowMultiple(true));
         }
 
         [Test]
