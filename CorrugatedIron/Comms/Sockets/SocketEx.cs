@@ -11,44 +11,41 @@
     /// </summary>
     public static class SocketEx
     {
-        #region Fields
         /// <summary>
         ///     Holds a delegate of <see cref="Socket" />'s accept operation.
         /// </summary>
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        private static readonly Func<Socket, SocketAwaitable, bool> acceptOp = (s, a) =>
+        private static readonly Func<Socket, SocketAwaitable, bool> AcceptOp = (s, a) =>
             s.AcceptAsync(a.Arguments);
 
         /// <summary>
         ///     Holds a delegate of <see cref="Socket" />'s connect operation.
         /// </summary>
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        private static readonly Func<Socket, SocketAwaitable, bool> connectOp = (s, a) =>
+        private static readonly Func<Socket, SocketAwaitable, bool> ConnectOp = (s, a) =>
             s.ConnectAsync(a.Arguments);
 
         /// <summary>
         ///     Holds a delegate of <see cref="Socket" />'s disconnect operation.
         /// </summary>
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        private static readonly Func<Socket, SocketAwaitable, bool> disconnectOp = (s, a) =>
+        private static readonly Func<Socket, SocketAwaitable, bool> DisconnectOp = (s, a) =>
             s.DisconnectAsync(a.Arguments);
 
         /// <summary>
         ///     Holds a delegate of <see cref="Socket" />'s receive operation.
         /// </summary>
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        private static readonly Func<Socket, SocketAwaitable, bool> receiveOp = (s, a) =>
+        private static readonly Func<Socket, SocketAwaitable, bool> ReceiveOp = (s, a) =>
             s.ReceiveAsync(a.Arguments);
 
         /// <summary>
         ///     Holds a delegate of <see cref="Socket" />'s send operation.
         /// </summary>
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        private static readonly Func<Socket, SocketAwaitable, bool> sendOp = (s, a) =>
+        private static readonly Func<Socket, SocketAwaitable, bool> SendOp = (s, a) =>
             s.SendAsync(a.Arguments);
-        #endregion
 
-        #region Methods
         /// <summary>
         ///     Begins an awaitable operation to accept an incoming connection attempt.
         /// </summary>
@@ -86,7 +83,7 @@
         /// </exception>
         public static SocketAwaitable AcceptAsync(this Socket socket, SocketAwaitable awaitable)
         {
-            return OperateAsync(socket, awaitable, acceptOp);
+            return OperateAsync(socket, awaitable, AcceptOp);
         }
 
         /// <summary>
@@ -129,7 +126,7 @@
         /// </exception>
         public static SocketAwaitable ConnectAsync(this Socket socket, SocketAwaitable awaitable)
         {
-            return OperateAsync(socket, awaitable, connectOp);
+            return OperateAsync(socket, awaitable, ConnectOp);
         }
 
         /// <summary>
@@ -166,7 +163,7 @@
         /// </exception>
         public static SocketAwaitable DisonnectAsync(this Socket socket, SocketAwaitable awaitable)
         {
-            return OperateAsync(socket, awaitable, disconnectOp);
+            return OperateAsync(socket, awaitable, DisconnectOp);
         }
 
         /// <summary>
@@ -200,7 +197,7 @@
         /// </exception>
         public static SocketAwaitable ReceiveAsync(this Socket socket, SocketAwaitable awaitable)
         {
-            return OperateAsync(socket, awaitable, receiveOp);
+            return OperateAsync(socket, awaitable, ReceiveOp);
         }
 
         /// <summary>
@@ -233,7 +230,7 @@
         /// </exception>
         public static SocketAwaitable SendAsync(this Socket socket, SocketAwaitable awaitable)
         {
-            return OperateAsync(socket, awaitable, sendOp);
+            return OperateAsync(socket, awaitable, SendOp);
         }
 
         /// <summary>
@@ -328,6 +325,5 @@
 
             return awaitable;
         }
-        #endregion
     }
 }

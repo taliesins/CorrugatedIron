@@ -14,6 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+using System.Diagnostics;
 using CorrugatedIron.Extensions;
 using CorrugatedIron.Models;
 using CorrugatedIron.Models.MapReduce;
@@ -73,10 +74,13 @@ namespace CorrugatedIron.Tests.Live.LoadTests
             query.Compile();
 
             var results = new List<RiakResult<RiakMapReduceResult>>[ThreadCount];
+            var watch = Stopwatch.StartNew();
             Parallel.For(0, ThreadCount, i =>
                 {
                     results[i] = DoMapRed(query);
                 });
+            watch.Stop();
+            var executionTime = watch.Elapsed;
 
             var failures = 0;
             foreach (var r in results.SelectMany(l => l))
@@ -95,8 +99,8 @@ namespace CorrugatedIron.Tests.Live.LoadTests
                     ++failures;
                 }
             }
-
-            Console.WriteLine("Total of {0} out of {1} failed to execute due to connection contention", failures, ThreadCount * ActionCount);
+    
+            Console.WriteLine("Total of {0} out of {1} failed to execute due to connection contention. Execution time = {2} milliseconds, for an average of {3} milliseconds", failures, ThreadCount * ActionCount, executionTime.TotalMilliseconds, (executionTime.TotalMilliseconds/(ThreadCount * ActionCount)));
         }
 
         private List<RiakResult<RiakMapReduceResult>> DoMapRed(RiakMapReduceQuery query)
@@ -132,10 +136,13 @@ namespace CorrugatedIron.Tests.Live.LoadTests
             query.Compile();
 
             var results = new List<RiakMapReduceResultPhase>[ThreadCount];
+            var watch = Stopwatch.StartNew();
             Parallel.For(0, ThreadCount, i =>
                 {
                     results[i] = DoStreamingMapRed(query);
                 });
+            watch.Stop();
+            var executionTime = watch.Elapsed;
 
             var failures = 0;
             foreach (var result in results)
@@ -154,7 +161,8 @@ namespace CorrugatedIron.Tests.Live.LoadTests
                     ++failures;
                 }
             }
-            Console.WriteLine("Total of {0} out of {1} failed to execute due to connection contention", failures, ThreadCount * ActionCount);
+
+            Console.WriteLine("Total of {0} out of {1} failed to execute due to connection contention. Execution time = {2} milliseconds, for an average of {3} milliseconds", failures, ThreadCount * ActionCount, executionTime.TotalMilliseconds, (executionTime.TotalMilliseconds / (ThreadCount * ActionCount)));
         }
 
         private List<RiakMapReduceResultPhase> DoStreamingMapRed(RiakMapReduceQuery query)
@@ -182,5 +190,11 @@ namespace CorrugatedIron.Tests.Live.LoadTests
             : base("riakOnTheFlyLoadTestConfiguration")
         {
         }
+    }
+
+    [TestFixture]
+    public class WhenUnderLoadWithRiakConnectionPool : WhenUnderLoad
+    {
+
     }
 }

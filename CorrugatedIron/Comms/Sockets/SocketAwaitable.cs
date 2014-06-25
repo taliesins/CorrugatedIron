@@ -10,7 +10,6 @@
     /// </summary>
     public sealed class SocketAwaitable : IDisposable
     {
-        #region Fields
         /// <summary>
         ///     A cached, empty array of bytes.
         /// </summary>
@@ -21,30 +20,30 @@
         ///     Asynchronous socket arguments for internal use.
         /// </summary>
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        private readonly SocketAsyncEventArgs arguments = new SocketAsyncEventArgs();
+        private readonly SocketAsyncEventArgs _arguments = new SocketAsyncEventArgs();
 
         /// <summary>
         ///     An object that can be used to synchronize access to the
         ///     <see cref="SocketAwaitable" />.
         /// </summary>
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        private readonly object syncRoot = new object();
+        private readonly object _syncRoot = new object();
 
         /// <summary>
         ///     An awaiter that waits the completions of asynchronous socket operations.
         /// </summary>
-        private readonly SocketAwaiter awaiter;
+        private readonly SocketAwaiter _awaiter;
 
         /// <summary>
         ///     The data buffer segment that holds the transferred bytes.
         /// </summary>
-        private ArraySegment<byte> transferred;
+        private ArraySegment<byte> _transferred;
 
         /// <summary>
         ///     A value indicating whether the <see cref="SocketAwaitable" /> is disposed.
         /// </summary>
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        private bool isDisposed;
+        private bool _isDisposed;
 
         /// <summary>
         ///     A value that indicates whether the socket operations using the
@@ -52,21 +51,17 @@
         ///     and attempt to marshall their continuations back to the captured context.
         /// </summary>
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        private bool shouldCaptureContext;
-        #endregion
+        private bool _shouldCaptureContext;
 
-        #region Constructors
         /// <summary>
         ///     Initializes a new instance of the <see cref="SocketAwaitable" /> class.
         /// </summary>
         public SocketAwaitable()
         {
-            this.awaiter = new SocketAwaiter(this);
-            this.transferred = new ArraySegment<byte>(EmptyArray);
+            _awaiter = new SocketAwaiter(this);
+            _transferred = new ArraySegment<byte>(EmptyArray);
         }
-        #endregion
 
-        #region Properties
         /// <summary>
         ///     Gets the socket created for accepting a connection with an asynchronous socket
         ///     method.
@@ -83,17 +78,17 @@
         {
             get
             {
-                lock (this.syncRoot)
+                lock (_syncRoot)
                     return new ArraySegment<byte>(
-                        this.Arguments.Buffer ?? EmptyArray,
-                        this.Arguments.Offset,
-                        this.Arguments.Count);
+                        Arguments.Buffer ?? EmptyArray,
+                        Arguments.Offset,
+                        Arguments.Count);
             }
 
             set
             {
-                lock (this.syncRoot)
-                    this.Arguments.SetBuffer(value.Array ?? EmptyArray, value.Offset, value.Count);
+                lock (_syncRoot)
+                    Arguments.SetBuffer(value.Array ?? EmptyArray, value.Offset, value.Count);
             }
         }
 
@@ -102,8 +97,8 @@
         /// </summary>
         public ArraySegment<byte> Transferred
         {
-            get { return this.transferred; }
-            internal set { this.transferred = value; }
+            get { return _transferred; }
+            internal set { _transferred = value; }
         }
 
         /// <summary>
@@ -112,7 +107,7 @@
         /// </summary>
         public Exception ConnectByNameError
         {
-            get { return this.Arguments.ConnectByNameError; }
+            get { return Arguments.ConnectByNameError; }
         }
 
         /// <summary>
@@ -121,8 +116,8 @@
         /// </summary>
         public bool DisconnectReuseSocket
         {
-            get { return this.Arguments.DisconnectReuseSocket; }
-            set { this.Arguments.DisconnectReuseSocket = value; }
+            get { return Arguments.DisconnectReuseSocket; }
+            set { Arguments.DisconnectReuseSocket = value; }
         }
 
         /// <summary>
@@ -130,7 +125,7 @@
         /// </summary>
         public SocketAsyncOperation LastOperation
         {
-            get { return this.Arguments.LastOperation; }
+            get { return Arguments.LastOperation; }
         }
 
         /// <summary>
@@ -138,8 +133,8 @@
         /// </summary>
         public EndPoint RemoteEndPoint
         {
-            get { return this.Arguments.RemoteEndPoint; }
-            set { this.Arguments.RemoteEndPoint = value; }
+            get { return Arguments.RemoteEndPoint; }
+            set { Arguments.RemoteEndPoint = value; }
         }
 
         /// <summary>
@@ -147,8 +142,8 @@
         /// </summary>
         public SocketFlags SocketFlags
         {
-            get { return this.Arguments.SocketFlags; }
-            set { this.Arguments.SocketFlags = value; }
+            get { return Arguments.SocketFlags; }
+            set { Arguments.SocketFlags = value; }
         }
 
         /// <summary>
@@ -164,14 +159,14 @@
         {
             get
             {
-                return this.shouldCaptureContext;
+                return _shouldCaptureContext;
             }
 
             set
             {
-                lock (this.awaiter.SyncRoot)
-                    if (this.awaiter.IsCompleted)
-                        this.shouldCaptureContext = value;
+                lock (_awaiter.SyncRoot)
+                    if (_awaiter.IsCompleted)
+                        _shouldCaptureContext = value;
                     else
                         throw new InvalidOperationException(
                             "A socket operation is already in progress"
@@ -184,7 +179,7 @@
         /// </summary>
         public bool IsDisposed
         {
-            get { return this.isDisposed; }
+            get { return _isDisposed; }
         }
 
         /// <summary>
@@ -192,25 +187,23 @@
         /// </summary>
         internal SocketAsyncEventArgs Arguments
         {
-            get { return this.arguments; }
+            get { return _arguments; }
         }
-        #endregion
 
-        #region Methods
         /// <summary>
         ///     Clears the buffer, accepted socket, remote endpoint and socket flags to prepare
         ///     <see cref="SocketAwaitable" /> for pooling.
         /// </summary>
         public void Clear()
         {
-            this.Arguments.AcceptSocket = null;
-            this.Arguments.SetBuffer(EmptyArray, 0, 0);
-            this.RemoteEndPoint = null;
-            this.SocketFlags = SocketFlags.None;
-            this.Transferred = new ArraySegment<byte>(EmptyArray);
+            Arguments.AcceptSocket = null;
+            Arguments.SetBuffer(EmptyArray, 0, 0);
+            RemoteEndPoint = null;
+            SocketFlags = SocketFlags.None;
+            Transferred = new ArraySegment<byte>(EmptyArray);
 
             // TODO: Remove with SocketAwaitable.UserToken.
-            this.Arguments.UserToken = null;
+            Arguments.UserToken = null;
         }
 
         /// <summary>
@@ -221,7 +214,7 @@
         /// </returns>
         public SocketAwaiter GetAwaiter()
         {
-            return this.awaiter;
+            return _awaiter;
         }
 
         /// <summary>
@@ -229,13 +222,12 @@
         /// </summary>
         public void Dispose()
         {
-            lock (this.syncRoot)
-                if (!this.IsDisposed)
+            lock (_syncRoot)
+                if (!IsDisposed)
                 {
-                    this.arguments.Dispose();
-                    this.isDisposed = true;
+                    _arguments.Dispose();
+                    _isDisposed = true;
                 }
         }
-        #endregion
     }
 }

@@ -12,47 +12,44 @@
     [DebuggerDisplay("Available: {AvailableBuffers} * {BufferSize}B | Disposed: {IsDisposed}")]
     public sealed class BlockingBufferManager : IDisposable
     {
-        #region Fields
         /// <summary>
         ///     The full name of the <see cref="BlockingBufferManager" /> type.
         /// </summary>
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        private static readonly string typeName = typeof(BlockingBufferManager).FullName;
+        private static readonly string TypeName = typeof(BlockingBufferManager).FullName;
 
         /// <summary>
         ///     Size of the buffers provided by the buffer manager.
         /// </summary>
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        private readonly int bufferSize;
+        private readonly int _bufferSize;
 
         /// <summary>
         ///     Data block that provides the underlying storage for the buffers provided by the
         ///     buffer manager.
         /// </summary>
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        private readonly byte[] data;
+        private readonly byte[] _data;
 
         /// <summary>
-        ///     Zero-based starting indices in <see cref="data" />, of the available segments.
+        ///     Zero-based starting indices in <see cref="_data" />, of the available segments.
         /// </summary>
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        private readonly BlockingCollection<int> availableIndices;
+        private readonly BlockingCollection<int> _availableIndices;
 
         /// <summary>
-        ///     Zero-based starting indices in <see cref="data" />, of the unavailable segments.
+        ///     Zero-based starting indices in <see cref="_data" />, of the unavailable segments.
         /// </summary>
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        private readonly ConcurrentDictionary<int, int> usedIndices;
+        private readonly ConcurrentDictionary<int, int> _usedIndices;
 
         /// <summary>
         ///     A value indicating whether the <see cref="BlockingBufferManager.Dispose" /> has
         ///     been called.
         /// </summary>
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        private bool isDisposed;
-        #endregion
+        private bool _isDisposed;
 
-        #region Constructors
         /// <summary>
         ///     Initializes a new instance of the <see cref="BlockingBufferManager" /> class.
         /// </summary>
@@ -79,23 +76,21 @@
                     bufferCount,
                     "Buffer count must not be less than one.");
 
-            this.bufferSize = bufferSize;
-            this.data = new byte[bufferSize * bufferCount];
-            this.availableIndices = new BlockingCollection<int>(bufferCount);
+            _bufferSize = bufferSize;
+            _data = new byte[bufferSize * bufferCount];
+            _availableIndices = new BlockingCollection<int>(bufferCount);
             for (int i = 0; i < bufferCount; i++)
-                this.availableIndices.Add(bufferSize * i);
+                _availableIndices.Add(bufferSize * i);
 
-            this.usedIndices = new ConcurrentDictionary<int, int>(bufferCount, bufferCount);
+            _usedIndices = new ConcurrentDictionary<int, int>(bufferCount, bufferCount);
         }
-        #endregion
 
-        #region Properties
         /// <summary>
         ///     Gets the size of the buffers provided by the buffer manager.
         /// </summary>
         public int BufferSize
         {
-            get { return this.bufferSize; }
+            get { return _bufferSize; }
         }
 
         /// <summary>
@@ -105,8 +100,8 @@
         {
             get
             {
-                lock (this.availableIndices)
-                    return !this.isDisposed ? this.availableIndices.Count : 0;
+                lock (_availableIndices)
+                    return !_isDisposed ? _availableIndices.Count : 0;
             }
         }
 
@@ -116,9 +111,8 @@
         /// </summary>
         public bool IsDisposed
         {
-            get { return this.isDisposed; }
+            get { return _isDisposed; }
         }
-        #endregion
 
         #region Methods
         /// <summary>
@@ -134,22 +128,22 @@
         /// </exception>
         public ArraySegment<byte> GetBuffer()
         {
-            lock (this.availableIndices)
-                if (this.isDisposed)
-                    throw new ObjectDisposedException(typeName);
+            lock (_availableIndices)
+                if (_isDisposed)
+                    throw new ObjectDisposedException(TypeName);
 
             int index;
             try
             {
-                index = this.availableIndices.Take();
+                index = _availableIndices.Take();
             }
             catch (InvalidOperationException)
             {
-                throw new ObjectDisposedException(typeName);
+                throw new ObjectDisposedException(TypeName);
             }
 
-            this.usedIndices[index] = index;
-            return new ArraySegment<byte>(this.data, index, this.BufferSize);
+            _usedIndices[index] = index;
+            return new ArraySegment<byte>(_data, index, BufferSize);
         }
 
         /// <summary>
@@ -167,27 +161,31 @@
         /// </exception>
         public void ReleaseBuffer(ArraySegment<byte> buffer)
         {
-            Array.Clear(buffer.Array, 0, buffer.Array.Length);
+            lock (_availableIndices)
+            {
+                if (_isDisposed)
+                    throw new ObjectDisposedException(TypeName);
 
-            lock (this.availableIndices)
-                if (this.isDisposed)
-                    throw new ObjectDisposedException(typeName);
+#if (DEBUG)
+                //TODO: Remove this when we sure it works 100%
+                Array.Clear(buffer.Array, buffer.Offset, buffer.Count);
+#endif
+            }
 
             int offset;
-            if (buffer.Array != this.data
-                || buffer.Count != this.BufferSize
-                || !this.usedIndices.TryRemove(buffer.Offset, out offset))
+            if (buffer.Array != _data
+                || buffer.Count != BufferSize
+                || !_usedIndices.TryRemove(buffer.Offset, out offset))
                 throw new ArgumentException(
                     "Buffer is not taken from the current buffer manager.",
                     "buffer");
-
             try
             {
-                this.availableIndices.Add(offset);
+                _availableIndices.Add(offset);
             }
             catch (InvalidOperationException)
             {
-                throw new ObjectDisposedException(typeName);
+                throw new ObjectDisposedException(TypeName);
             }
         }
 
@@ -204,15 +202,15 @@
             MessageId = "availableIndices")]
         public void Dispose()
         {
-            lock (this.availableIndices)
-                if (!this.isDisposed)
+            lock (_availableIndices)
+                if (!_isDisposed)
                 {
-                    this.availableIndices.CompleteAdding();
+                    _availableIndices.CompleteAdding();
                     int i;
-                    while (this.availableIndices.TryTake(out i))
-                        this.usedIndices[i] = i;
+                    while (_availableIndices.TryTake(out i))
+                        _usedIndices[i] = i;
 
-                    this.isDisposed = true;
+                    _isDisposed = true;
                 }
         }
         #endregion

@@ -64,20 +64,20 @@ namespace CorrugatedIron
             return _batchConnection != null ? op(_batchConnection) : _endPoint.UseConnection(op, RetryCount);
         }
 
-        private Task<RiakResult<IEnumerable<RiakResult>>> UseDelayedConnection<TResult>(
+        private Task<RiakResult<IEnumerable<RiakResult>>> UseConnection<TResult>(
             Func<IRiakConnection, Action, Task<RiakResult<IEnumerable<RiakResult>>>> op)
         {
             return _batchConnection != null
                 ? op(_batchConnection, () => { })
-                : _endPoint.UseDelayedConnection(op, RetryCount);
+                : _endPoint.UseConnection(op, RetryCount);
         }
 
-        private Task<RiakResult<IEnumerable<RiakResult<TResult>>>> UseDelayedConnection<TResult>(
+        private Task<RiakResult<IEnumerable<RiakResult<TResult>>>> UseConnection<TResult>(
             Func<IRiakConnection, Action, Task<RiakResult<IEnumerable<RiakResult<TResult>>>>> op)
         {
             return _batchConnection != null
                 ? op(_batchConnection, () => { })
-                : _endPoint.UseDelayedConnection(op, RetryCount);
+                : _endPoint.UseConnection(op, RetryCount);
         }
 
         private static bool IsValidBucketOrKey(string value)
@@ -453,7 +453,7 @@ namespace CorrugatedIron
         public async Task<RiakResult<RiakStreamedMapReduceResult>> StreamMapReduce(RiakMapReduceQuery query)
         {
             var request = query.ToMessage();
-            var response = await UseDelayedConnection((conn, onFinish) => conn.PbcWriteStreamRead<RpbMapRedReq, RpbMapRedResp>(request, r => r.IsSuccess && !r.Value.done, onFinish));
+            var response = await UseConnection((conn, onFinish) => conn.PbcWriteStreamRead<RpbMapRedReq, RpbMapRedResp>(request, r => r.IsSuccess && !r.Value.done, onFinish));
 
             if (response.IsSuccess)
             {
@@ -465,7 +465,7 @@ namespace CorrugatedIron
         public async Task<RiakResult<IEnumerable<string>>> StreamListBuckets()
         {
             var lbReq = new RpbListBucketsReq { stream = true };
-            var result = await UseDelayedConnection((conn, onFinish) =>
+            var result = await UseConnection((conn, onFinish) =>
                                               conn.PbcWriteStreamRead<RpbListBucketsReq, RpbListBucketsResp>(lbReq, lbr => lbr.IsSuccess && !lbr.Value.done, onFinish));
 
             if (result.IsSuccess)
@@ -517,7 +517,7 @@ namespace CorrugatedIron
             Console.WriteLine(ListKeysWarning);
 
             var lkReq = new RpbListKeysReq { bucket = bucket.ToRiakString() };
-            var result = await UseDelayedConnection((conn, onFinish) => conn.PbcWriteStreamRead<RpbListKeysReq, RpbListKeysResp>(lkReq, lkr => lkr.IsSuccess && !lkr.Value.done, onFinish));
+            var result = await UseConnection((conn, onFinish) => conn.PbcWriteStreamRead<RpbListKeysReq, RpbListKeysResp>(lkReq, lkr => lkr.IsSuccess && !lkr.Value.done, onFinish));
 
             if (result.IsSuccess)
             {
@@ -748,7 +748,7 @@ namespace CorrugatedIron
             options = options ?? new RiakIndexGetOptions();
             options.Populate(message);
 
-            var result = await UseDelayedConnection((conn, onFinish) => conn.PbcWriteStreamRead<RpbIndexReq, RpbIndexResp>(message, lbr => lbr.IsSuccess && !lbr.Value.done, onFinish));
+            var result = await UseConnection((conn, onFinish) => conn.PbcWriteStreamRead<RpbIndexReq, RpbIndexResp>(message, lbr => lbr.IsSuccess && !lbr.Value.done, onFinish));
 
             if (result.IsSuccess)
             {
@@ -775,7 +775,7 @@ namespace CorrugatedIron
             options = options ?? new RiakIndexGetOptions();
             options.Populate(message);
 
-            var result = await UseDelayedConnection((conn, onFinish) =>
+            var result = await UseConnection((conn, onFinish) =>
                                               conn.PbcWriteStreamRead<RpbIndexReq, RpbIndexResp>(message, lbr => lbr.IsSuccess && !lbr.Value.done, onFinish));
 
             if (result.IsSuccess)
@@ -875,7 +875,7 @@ namespace CorrugatedIron
                 }
             };
 
-            var result = await _endPoint.UseDelayedConnection(helperBatchFun, RetryCount);
+            var result = await _endPoint.UseConnection(helperBatchFun, RetryCount);
 
             if (!result.IsSuccess && result.ResultCode == ResultCode.BatchException)
             {

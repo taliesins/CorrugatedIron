@@ -21,7 +21,6 @@ namespace CorrugatedIron.Comms
 {
     internal interface IRiakConnectionManager : IDisposable
     {
-        Tuple<bool, Task<TResult>> Consume<TResult>(Func<IRiakConnection, Task<TResult>> consumer);
-        Tuple<bool, Task<TResult>> DelayedConsume<TResult>(Func<IRiakConnection, Action, Task<TResult>> consumer);
+        Tuple<bool, Task<TResult>> Consume<TResult>(Func<IRiakConnection, Action, Task<TResult>> consumer);
     }
 }

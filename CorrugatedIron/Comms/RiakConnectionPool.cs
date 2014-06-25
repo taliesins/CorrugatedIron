@@ -26,70 +26,41 @@ namespace CorrugatedIron.Comms
     internal class RiakConnectionPool : IRiakConnectionManager
     {
         private readonly List<IRiakConnection> _allResources;
-        private readonly ConcurrentStack<IRiakConnection> _resources;
-        private readonly SocketAwaitablePool _pool;
-        private readonly BlockingBufferManager _bufferManager;
+        private readonly BlockingCollection<IRiakConnection> _resources;
         private bool _disposing;
 
         public RiakConnectionPool(IRiakNodeConfiguration nodeConfig, IRiakConnectionFactory connFactory)
         {
             var poolSize = nodeConfig.PoolSize;
-            _pool = new SocketAwaitablePool(nodeConfig.PoolSize);
-            _bufferManager = new BlockingBufferManager(nodeConfig.BufferSize, nodeConfig.PoolSize);
+            var pool = new SocketAwaitablePool(nodeConfig.PoolSize);
+            var bufferManager = new BlockingBufferManager(nodeConfig.BufferSize, nodeConfig.PoolSize);
 
             _allResources = new List<IRiakConnection>();
-            _resources = new ConcurrentStack<IRiakConnection>();
+            
 
             for(var i = 0; i < poolSize; ++i)
             {
-                var conn = connFactory.CreateConnection(nodeConfig, _pool, _bufferManager);
+                var conn = connFactory.CreateConnection(nodeConfig, pool, bufferManager);
                 _allResources.Add(conn);
-                _resources.Push(conn);
             }
+
+            _resources = new BlockingCollection<IRiakConnection>(new ConcurrentQueue<IRiakConnection>(_allResources));
         }
 
-        public Tuple<bool, Task<TResult>> Consume<TResult>(Func<IRiakConnection, Task<TResult>> consumer)
+        public Tuple<bool, Task<TResult>> Consume<TResult>(Func<IRiakConnection, Action, Task<TResult>> consumer)
         {
             if (_disposing) return Tuple.Create<bool, Task<TResult>>(false, null);
 
             IRiakConnection instance = null;
             try
             {
-                if(_resources.TryPop(out instance))
-                {
-                    var result = consumer(instance);
-                    return Tuple.Create(true, result);
-                }
-            }
-            catch(Exception)
-            {
-                return Tuple.Create<bool, Task<TResult>>(false, null);
-            }
-            finally
-            {
-                if(instance != null)
-                {
-                    _resources.Push(instance);
-                }
-            }
-
-            return Tuple.Create<bool, Task<TResult>>(false, null);
-        }
-
-        public Tuple<bool, Task<TResult>> DelayedConsume<TResult>(Func<IRiakConnection, Action, Task<TResult>> consumer)
-        {
-            if (_disposing) return Tuple.Create<bool, Task<TResult>>(false, null);
-
-            IRiakConnection instance = null;
-            try
-            {
-                if(_resources.TryPop(out instance))
+                if (_resources.TryTake(out instance, -1))
                 {
                     Action cleanup = () =>
                     {
                         var i = instance;
                         instance = null;
-                        _resources.Push(i);
+                        _resources.Add(i);
                     };
 
                     var result = consumer(instance, cleanup);
@@ -100,7 +71,7 @@ namespace CorrugatedIron.Comms
             {
                 if(instance != null)
                 {
-                    _resources.Push(instance);
+                    _resources.Add(instance);
                 }
                 return Tuple.Create<bool, Task<TResult>>(false, null);
             }

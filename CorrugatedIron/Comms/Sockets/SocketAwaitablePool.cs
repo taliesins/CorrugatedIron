@@ -13,27 +13,24 @@
     public sealed class SocketAwaitablePool
         : ICollection, IDisposable, IEnumerable<SocketAwaitable>
     {
-        #region Fields
         /// <summary>
         ///     The full name of the <see cref="SocketAwaitablePool" /> type.
         /// </summary>
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        private static readonly string typeName = typeof(SocketAwaitablePool).FullName;
+        private static readonly string TypeName = typeof(SocketAwaitablePool).FullName;
 
         /// <summary>
         ///     A thread-safe, unordered collection of awaitable socket arguments.
         /// </summary>
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        private readonly ConcurrentBag<SocketAwaitable> bag;
+        private readonly ConcurrentBag<SocketAwaitable> _bag;
 
         /// <summary>
         ///     A value indicating whether the <see cref="SocketAwaitablePool" /> is disposed.
         /// </summary>
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        private bool isDisposed;
-        #endregion
+        private bool _isDisposed;
 
-        #region Constructors
         /// <summary>
         ///     Initializes a new instance of the <see cref="SocketAwaitablePool" /> class.
         /// </summary>
@@ -51,13 +48,11 @@
                     initialCount,
                     "Initial count must not be less than zero.");
 
-            this.bag = new ConcurrentBag<SocketAwaitable>();
-            for (int i = 0; i < initialCount; i++)
-                this.Add(new SocketAwaitable());
+            _bag = new ConcurrentBag<SocketAwaitable>();
+            for (var i = 0; i < initialCount; i++)
+                Add(new SocketAwaitable());
         }
-        #endregion
 
-        #region Properties
         /// <summary>
         ///     Gets the number of awaitable socket arguments in the
         ///     <see cref="SocketAwaitablePool" />.
@@ -66,8 +61,8 @@
         {
             get
             {
-                lock (this.bag)
-                    return !this.IsDisposed ? this.bag.Count : 0;
+                lock (_bag)
+                    return !IsDisposed ? _bag.Count : 0;
             }
         }
 
@@ -78,8 +73,8 @@
         {
             get
             {
-                lock (this.bag)
-                    return this.isDisposed;
+                lock (_bag)
+                    return _isDisposed;
             }
         }
 
@@ -107,9 +102,7 @@
                     "Synchronization using SyncRoot is not supported.");
             }
         }
-        #endregion
 
-        #region Methods
         /// <summary>
         ///     Adds a <see cref="SocketAwaitable" /> instance to the pool.
         /// </summary>
@@ -126,9 +119,9 @@
                     "awaitable",
                     "Awaitable socket arguments to pull must not be null.");
 
-            lock (this.bag)
-                if (!this.IsDisposed)
-                    this.bag.Add(awaitable);
+            lock (_bag)
+                if (!IsDisposed)
+                    _bag.Add(awaitable);
                 else
                     awaitable.Dispose();
         }
@@ -147,11 +140,11 @@
         public SocketAwaitable Take()
         {
             SocketAwaitable awaitable;
-            lock (this.bag)
-                if (!this.IsDisposed)
-                    return this.bag.TryTake(out awaitable) ? awaitable : new SocketAwaitable();
+            lock (_bag)
+                if (!IsDisposed)
+                    return _bag.TryTake(out awaitable) ? awaitable : new SocketAwaitable();
                 else
-                    throw new ObjectDisposedException(typeName);
+                    throw new ObjectDisposedException(TypeName);
         }
 
         /// <summary>
@@ -201,11 +194,11 @@
                 throw new ArgumentException(message, "array");
             }
 
-            lock (this.bag)
-                if (!this.IsDisposed)
-                    this.bag.CopyTo(array as SocketAwaitable[], offset);
+            lock (_bag)
+                if (!IsDisposed)
+                    _bag.CopyTo(array as SocketAwaitable[], offset);
                 else
-                    throw new ObjectDisposedException(typeName);
+                    throw new ObjectDisposedException(TypeName);
         }
 
         /// <summary>
@@ -219,10 +212,9 @@
         /// </exception>
         public IEnumerator<SocketAwaitable> GetEnumerator()
         {
-            if (!this.IsDisposed)
-                return this.bag.GetEnumerator();
-            else
-                throw new ObjectDisposedException(typeName);
+            if (!IsDisposed)
+                return _bag.GetEnumerator();
+            throw new ObjectDisposedException(TypeName);
         }
 
         /// <summary>
@@ -237,7 +229,7 @@
         /// </exception>
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return this.GetEnumerator();
+            return GetEnumerator();
         }
 
         /// <summary>
@@ -245,15 +237,14 @@
         /// </summary>
         public void Dispose()
         {
-            lock (this.bag)
-                if (!this.IsDisposed)
+            lock (_bag)
+                if (!IsDisposed)
                 {
-                    for (int i = 0; i < this.Count; i++)
-                        this.Take().Dispose();
+                    for (var i = 0; i < Count; i++)
+                        Take().Dispose();
 
-                    this.isDisposed = true;
+                    _isDisposed = true;
                 }
         }
-        #endregion
     }
 }

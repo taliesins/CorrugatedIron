@@ -14,46 +14,43 @@
     [DebuggerDisplay("Completed: {IsCompleted}")]
     public sealed class SocketAwaiter : INotifyCompletion
     {
-        #region Fields
         /// <summary>
         ///     A sentinel delegate that does nothing.
         /// </summary>
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        private static readonly Action sentinel = delegate { };
+        private static readonly Action Sentinel = delegate { };
 
         /// <summary>
         ///     The asynchronous socket arguments to await.
         /// </summary>
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        private readonly SocketAwaitable awaitable;
+        private readonly SocketAwaitable _awaitable;
 
         /// <summary>
         ///     An object to synchronize access to the awaiter for validations.
         /// </summary>
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        private readonly object syncRoot = new object();
+        private readonly object _syncRoot = new object();
 
         /// <summary>
         ///     The continuation delegate that will be called after the current operation is
         ///     awaited.
         /// </summary>
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        private Action continuation;
+        private Action _continuation;
 
         /// <summary>
         ///     A value indicating whether the asynchronous operation is completed.
         /// </summary>
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        private bool isCompleted = true;
+        private bool _isCompleted = true;
 
         /// <summary>
         ///     A synchronization context for marshaling the continuation delegate to.
         /// </summary>
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        private SynchronizationContext syncContext;
-        #endregion
+        private SynchronizationContext _syncContext;
 
-        #region Constructors
         /// <summary>
         ///     Initializes a new instance of the <see cref="SocketAwaiter" /> class.
         /// </summary>
@@ -62,19 +59,19 @@
         /// </param>
         internal SocketAwaiter(SocketAwaitable awaitable)
         {
-            this.awaitable = awaitable;
-            this.awaitable.Arguments.Completed += delegate
+            _awaitable = awaitable;
+            _awaitable.Arguments.Completed += delegate
             {
-                var c = this.continuation
-                    ?? Interlocked.CompareExchange(ref this.continuation, sentinel, null);
+                var c = _continuation
+                    ?? Interlocked.CompareExchange(ref _continuation, Sentinel, null);
 
                 if (c != null)
                 {
-                    var syncContext = this.awaitable.ShouldCaptureContext
-                        ? this.SyncContext
+                    var syncContext = _awaitable.ShouldCaptureContext
+                        ? SyncContext
                         : null;
 
-                    this.Complete();
+                    Complete();
                     if (syncContext != null)
                         syncContext.Post(s => c.Invoke(), null);
                     else
@@ -82,15 +79,13 @@
                 }
             };
         }
-        #endregion
 
-        #region Properties
         /// <summary>
         ///     Gets a value indicating whether the asynchronous operation is completed.
         /// </summary>
         public bool IsCompleted
         {
-            get { return this.isCompleted; }
+            get { return _isCompleted; }
         }
 
         /// <summary>
@@ -98,7 +93,7 @@
         /// </summary>
         internal object SyncRoot
         {
-            get { return this.syncRoot; }
+            get { return _syncRoot; }
         }
 
         /// <summary>
@@ -106,12 +101,10 @@
         /// </summary>
         internal SynchronizationContext SyncContext
         {
-            get { return this.syncContext; }
-            set { this.syncContext = value; }
+            get { return _syncContext; }
+            set { _syncContext = value; }
         }
-        #endregion
 
-        #region Methods
         /// <summary>
         ///     Gets the result of the asynchronous socket operation.
         /// </summary>
@@ -120,7 +113,7 @@
         /// </returns>
         public SocketError GetResult()
         {
-            return this.awaitable.Arguments.SocketError;
+            return _awaitable.Arguments.SocketError;
         }
 
         /// <summary>
@@ -132,21 +125,22 @@
         /// </param>
         public void OnCompleted(Action continuation)
         {
-            if (this.continuation == sentinel
-                || Interlocked.CompareExchange(
-                       ref this.continuation,
-                       continuation,
-                       null) == sentinel)
+            if (_continuation != Sentinel && Interlocked.CompareExchange(
+                ref _continuation,
+                continuation,
+                null) != Sentinel) return;
+            Complete();
+            if (!_awaitable.ShouldCaptureContext)
             {
-                this.Complete();
-                if (!this.awaitable.ShouldCaptureContext)
-                    Task.Run(continuation);
-                else
-                    Task.Factory.StartNew(
-                        continuation,
-                        CancellationToken.None,
-                        TaskCreationOptions.DenyChildAttach,
-                        TaskScheduler.FromCurrentSynchronizationContext());
+                Task.Run(continuation);//.ConfigureAwait(false);
+            }
+            else
+            {
+                Task.Factory.StartNew(
+                    continuation,
+                    CancellationToken.None,
+                    TaskCreationOptions.DenyChildAttach,
+                    TaskScheduler.FromCurrentSynchronizationContext());
             }
         }
 
@@ -155,35 +149,33 @@
         /// </summary>
         internal void Reset()
         {
-            this.awaitable.Arguments.AcceptSocket = null;
-            this.awaitable.Arguments.SocketError = SocketError.AlreadyInProgress;
-            this.awaitable.Transferred = new ArraySegment<byte>(SocketAwaitable.EmptyArray);
-            this.isCompleted = false;
-            this.continuation = null;
+            _awaitable.Arguments.AcceptSocket = null;
+            _awaitable.Arguments.SocketError = SocketError.AlreadyInProgress;
+            _awaitable.Transferred = new ArraySegment<byte>(SocketAwaitable.EmptyArray);
+            _isCompleted = false;
+            _continuation = null;
         }
 
         /// <summary>
-        ///     Sets <see cref="IsCompleted" /> to true, nullifies the <see cref="syncContext" />
+        ///     Sets <see cref="IsCompleted" /> to true, nullifies the <see cref="_syncContext" />
         ///     and updates <see cref="SocketAwaitable.Transferred" />.
         /// </summary>
         internal void Complete()
         {
-            if (!this.IsCompleted)
-            {
-                var buffer = this.awaitable.Buffer;
-                this.awaitable.Transferred = buffer.Count == 0
-                    ? buffer
-                    : new ArraySegment<byte>(
-                        buffer.Array,
-                        buffer.Offset,
-                        this.awaitable.Arguments.BytesTransferred);
+            if (IsCompleted) return;
 
-                if (this.awaitable.ShouldCaptureContext)
-                    this.syncContext = null;
+            var buffer = _awaitable.Buffer;
+            _awaitable.Transferred = buffer.Count == 0
+                ? buffer
+                : new ArraySegment<byte>(
+                    buffer.Array,
+                    buffer.Offset,
+                    _awaitable.Arguments.BytesTransferred);
 
-                this.isCompleted = true;
-            }
+            if (_awaitable.ShouldCaptureContext)
+                _syncContext = null;
+
+            _isCompleted = true;
         }
-        #endregion
     }
 }

@@ -104,30 +104,109 @@ namespace CorrugatedIron
             return onError(ResultCode.ClusterOffline, "Unable to access functioning Riak node", true);
         }
 
-        public override async Task<RiakResult<IEnumerable<TResult>>> UseDelayedConnection<TResult>(Func<IRiakConnection, Action, Task<RiakResult<IEnumerable<TResult>>>> useFun, int retryAttempts)
+        protected async override Task<RiakResult<IEnumerable<T>>> UseConnection<T>(Func<IRiakConnection, Task<RiakResult<IEnumerable<T>>>> useFun, Func<ResultCode, string, bool, RiakResult<IEnumerable<T>>> onError, int retryAttempts)
         {
-            if(retryAttempts < 0)
+            if (retryAttempts < 0)
             {
-                return RiakResult<IEnumerable<TResult>>.Error(ResultCode.NoRetries, "Unable to access a connection on the cluster.", true);
+                return onError(ResultCode.NoRetries, "Unable to access a connection on the cluster.", true);
             }
-            if(_disposing)
+            if (_disposing)
             {
-                return RiakResult<IEnumerable<TResult>>.Error(ResultCode.ShuttingDown, "System currently shutting down", true);
+                return onError(ResultCode.ShuttingDown, "System currently shutting down", true);
             }
 
             var node = _node;
 
-            if(node != null)
+            if (node != null)
             {
-                var result = await node.UseDelayedConnection(useFun);
-                if(!result.IsSuccess)
+                var result = await node.UseConnection(useFun);
+                if (!result.IsSuccess)
                 {
                     Thread.Sleep(RetryWaitTime);
-                    return await UseDelayedConnection(useFun, retryAttempts - 1);
+                    return await UseConnection(useFun, onError, retryAttempts - 1);
+                }
+
+                return result;
+            }
+            return onError(ResultCode.ClusterOffline, "Unable to access functioning Riak node", true);
+        }
+
+        protected async override Task<RiakResult> UseConnection(Func<IRiakConnection, Action, Task<RiakResult>> useFun, Func<ResultCode, string, bool, RiakResult> onError, int retryAttempts)
+        {
+            if (retryAttempts < 0)
+            {
+                return onError(ResultCode.NoRetries, "Unable to access a connection on the cluster.", true);
+            }
+            if (_disposing)
+            {
+                return onError(ResultCode.ShuttingDown, "System currently shutting down", true);
+            }
+
+            var node = _node;
+
+            if (node != null)
+            {
+                var result = await node.UseConnection(useFun);
+                if (!result.IsSuccess)
+                {
+                    Thread.Sleep(RetryWaitTime);
+                    return await UseConnection(useFun, retryAttempts - 1);
                 }
                 return result;
             }
-            return RiakResult<IEnumerable<TResult>>.Error(ResultCode.ClusterOffline, "Unable to access functioning Riak node", true);
+            return onError(ResultCode.ClusterOffline, "Unable to access functioning Riak node", true);
+        }
+
+        protected async override Task<RiakResult<T>> UseConnection<T>(Func<IRiakConnection, Action, Task<RiakResult<T>>> useFun, Func<ResultCode, string, bool, RiakResult<T>> onError, int retryAttempts)
+        {
+            if (retryAttempts < 0)
+            {
+                return onError(ResultCode.NoRetries, "Unable to access a connection on the cluster.", true);
+            }
+            if (_disposing)
+            {
+                return onError(ResultCode.ShuttingDown, "System currently shutting down", true);
+            }
+
+            var node = _node;
+
+            if (node != null)
+            {
+                var result = await node.UseConnection(useFun);
+                if (!result.IsSuccess)
+                {
+                    Thread.Sleep(RetryWaitTime);
+                    return await UseConnection(useFun, retryAttempts - 1);
+                }
+                return result;
+            }
+            return onError(ResultCode.ClusterOffline, "Unable to access functioning Riak node", true);
+        }
+
+        protected async override Task<RiakResult<IEnumerable<T>>> UseConnection<T>(Func<IRiakConnection, Action, Task<RiakResult<IEnumerable<T>>>> useFun, Func<ResultCode, string, bool, RiakResult<IEnumerable<T>>> onError, int retryAttempts)
+        {
+            if (retryAttempts < 0)
+            {
+                return onError(ResultCode.NoRetries, "Unable to access a connection on the cluster.", true);
+            }
+            if (_disposing)
+            {
+                return onError(ResultCode.ShuttingDown, "System currently shutting down", true);
+            }
+
+            var node = _node;
+
+            if (node != null)
+            {
+                var result = await node.UseConnection(useFun);
+                if (!result.IsSuccess)
+                {
+                    Thread.Sleep(RetryWaitTime);
+                    return await UseConnection(useFun, retryAttempts - 1);
+                }
+                return result;
+            }
+            return onError(ResultCode.ClusterOffline, "Unable to access functioning Riak node", true);
         }
 
         public override void Dispose()

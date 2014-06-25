@@ -598,12 +598,65 @@ namespace CorrugatedIron
         /// </exception>
         public void Batch(Action<IRiakBatchClient> batchAction)
         {
-            Batch<object>(c => { batchAction(c); return null; });
+            Func<IRiakConnection, Action, Task<RiakResult<RiakResult>>> helperBatchFun = (conn, onFinish) =>
+            {
+                try
+                {
+                    batchAction(new RiakClient(conn));
+                    return Task.FromResult(RiakResult<RiakResult>.Success(null));
+                }
+                catch (Exception ex)
+                {
+                    return Task.FromResult(RiakResult<RiakResult>.Error(ResultCode.BatchException, "{0}\n{1}".Fmt(ex.Message, ex.StackTrace), true));
+                }
+                finally
+                {
+                    onFinish();
+                }
+            };
+
+            var result = _endPoint.UseConnection(helperBatchFun, RetryCount).Result;
+
+            if (!result.IsSuccess && result.ResultCode == ResultCode.BatchException)
+            {
+                throw new Exception(result.ErrorMessage);
+            }
         }
 
         public T Batch<T>(Func<IRiakBatchClient, T> batchFun)
         {
             var funResult = default(T);
+
+            Func<IRiakConnection, Action, Task<RiakResult<RiakResult<object>>>> helperBatchFun = (conn, onFinish) =>
+            {
+                try
+                {
+                    funResult = batchFun(new RiakClient(conn));
+                    return Task.FromResult(RiakResult<RiakResult<object>>.Success(null));
+                }
+                catch(Exception ex)
+                {
+                    return Task.FromResult(RiakResult<RiakResult<object>>.Error(ResultCode.BatchException, "{0}\n{1}".Fmt(ex.Message, ex.StackTrace), true));
+                }
+                finally
+                {
+                    onFinish();
+                }
+            };
+
+            var result = _endPoint.UseConnection(helperBatchFun, RetryCount).Result;
+
+            if(!result.IsSuccess && result.ResultCode == ResultCode.BatchException)
+            {
+                throw new Exception(result.ErrorMessage);
+            }
+
+            return funResult;
+        }
+
+        public IEnumerable<T> Batch<T>(Func<IRiakBatchClient, IEnumerable<T>> batchFun)
+        {
+            var funResult = default(IEnumerable<T>);
 
             Func<IRiakConnection, Action, Task<RiakResult<IEnumerable<RiakResult<object>>>>> helperBatchFun = (conn, onFinish) =>
             {
@@ -612,7 +665,7 @@ namespace CorrugatedIron
                     funResult = batchFun(new RiakClient(conn));
                     return Task.FromResult(RiakResult<IEnumerable<RiakResult<object>>>.Success(null));
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
                     return Task.FromResult(RiakResult<IEnumerable<RiakResult<object>>>.Error(ResultCode.BatchException, "{0}\n{1}".Fmt(ex.Message, ex.StackTrace), true));
                 }
@@ -622,9 +675,9 @@ namespace CorrugatedIron
                 }
             };
 
-            var result = _endPoint.UseDelayedConnection(helperBatchFun, RetryCount).Result;
+            var result = _endPoint.UseConnection(helperBatchFun, RetryCount).Result;
 
-            if(!result.IsSuccess && result.ResultCode == ResultCode.BatchException)
+            if (!result.IsSuccess && result.ResultCode == ResultCode.BatchException)
             {
                 throw new Exception(result.ErrorMessage);
             }

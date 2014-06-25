@@ -29,33 +29,15 @@ namespace CorrugatedIron.Comms
         private readonly BlockingBufferManager _bufferManager;
         private bool _disposing;
 
-        public RiakOnTheFlyConnection(IRiakNodeConfiguration nodeConfig, IRiakConnectionFactory connFactory)
+        public RiakOnTheFlyConnection(IRiakNodeConfiguration nodeConfig, IRiakConnectionFactory connFactory, int bufferPoolSize = 20)
         {
             _nodeConfig = nodeConfig;
             _connFactory = connFactory;
             _pool = new SocketAwaitablePool(nodeConfig.PoolSize);
-            _bufferManager = new BlockingBufferManager(nodeConfig.BufferSize, nodeConfig.PoolSize);
+            _bufferManager = new BlockingBufferManager(nodeConfig.BufferSize, bufferPoolSize);
         }
 
-        public Tuple<bool, Task<TResult>> Consume<TResult>(Func<IRiakConnection, Task<TResult>> consumer)
-        {
-            if (_disposing) return Tuple.Create<bool, Task<TResult>>(false, null);
-
-            using (var conn = _connFactory.CreateConnection(_nodeConfig, _pool, _bufferManager))
-            {
-                try
-                {
-                    var result = consumer(conn);
-                    return Tuple.Create(true, result);
-                }
-                catch(Exception)
-                {
-                    return Tuple.Create<bool, Task<TResult>>(false, null);
-                }
-            }
-        }
-
-        public Tuple<bool, Task<TResult>> DelayedConsume<TResult>(Func<IRiakConnection, Action, Task<TResult>> consumer)
+        public Tuple<bool, Task<TResult>> Consume<TResult>(Func<IRiakConnection, Action, Task<TResult>> consumer)
         {
             if (_disposing) return Tuple.Create<bool, Task<TResult>>(false, null);
 

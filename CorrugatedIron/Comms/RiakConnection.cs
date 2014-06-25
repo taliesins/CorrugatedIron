@@ -14,6 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+using System.Reactive.Linq;
 using System.Threading.Tasks;
 using CorrugatedIron.Exceptions;
 using CorrugatedIron.Extensions;
@@ -106,7 +107,8 @@ namespace CorrugatedIron.Comms
                 RiakResult<TResult> result;
                 do
                 {
-                    result = RiakResult<TResult>.Success(_socket.Read<TResult>().Result);
+                    var read = await _socket.Read<TResult>();
+                    result = RiakResult<TResult>.Success(read);
                     results.Add(result);
                 } while(repeatRead(result));
 
@@ -245,26 +247,43 @@ namespace CorrugatedIron.Comms
             where TResult : class, new()
         {
             var streamer = PbcStreamReadIterator(repeatRead, onFinish);
-            return RiakResult<IEnumerable<RiakResult<TResult>>>.Success(streamer);
+            return RiakResult<IEnumerable<RiakResult<TResult>>>.Success(streamer.ToEnumerable());
         }
 
-        private IEnumerable<RiakResult<TResult>> PbcStreamReadIterator<TResult>(Func<RiakResult<TResult>, bool> repeatRead, Action onFinish)
+        private IObservable<RiakResult<TResult>> PbcStreamReadIterator<TResult>(Func<RiakResult<TResult>, bool> repeatRead, Action onFinish)
             where TResult : class, new()
         {
-            RiakResult<TResult> result;
-
-            do
+            var pbcStreamReadIterator = Observable.Create<RiakResult<TResult>>(async observer =>
             {
-                result = PbcRead<TResult>().Result;
-                if(!result.IsSuccess) break;
-                yield return result;
-            } while(repeatRead(result));
+                RiakResult<TResult> result = null;
+                do
+                {
+                    try
+                    {
+                        result = await PbcRead<TResult>();
+                        if (!result.IsSuccess)
+                        {
+                            var error = RiakResult<TResult>.Error(result.ResultCode, result.ErrorMessage, result.NodeOffline);
+                            observer.OnNext(error);
+                            break;
+                        }
 
-            // clean up first..
-            onFinish();
+                        observer.OnNext(result);
+                    }
+                    catch (Exception exception)
+                    {
+                        observer.OnError(exception);
+                    }
+  
+                } while (repeatRead(result));
+
+                onFinish();
+
+                observer.OnCompleted();
+            });
 
             // then return the failure to the client to indicate failure
-            yield return result;
+            return pbcStreamReadIterator;
         }
 
         public async Task<RiakResult<IEnumerable<RiakResult<TResult>>>> PbcWriteStreamRead<TRequest, TResult>(TRequest request,
@@ -292,7 +311,7 @@ namespace CorrugatedIron.Comms
             var writeResult = PbcWrite(request).Result;
             if(writeResult.IsSuccess)
             {
-                return PbcStreamReadIterator(repeatRead, onFinish);
+                return PbcStreamReadIterator(repeatRead, onFinish).ToEnumerable();
             }
             onFinish();
             return new[] { RiakResult<TResult>.Error(writeResult.ResultCode, writeResult.ErrorMessage, writeResult.NodeOffline) };
@@ -305,7 +324,7 @@ namespace CorrugatedIron.Comms
             var writeResult = PbcWrite(messageCode).Result;
             if(writeResult.IsSuccess)
             {
-                return PbcStreamReadIterator(repeatRead, onFinish);
+                return PbcStreamReadIterator(repeatRead, onFinish).ToEnumerable();
             }
             onFinish();
             return new[] { RiakResult<TResult>.Error(writeResult.ResultCode, writeResult.ErrorMessage, writeResult.NodeOffline) };

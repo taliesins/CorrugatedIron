@@ -47,14 +47,43 @@ namespace CorrugatedIron
             return UseConnection(useFun, RiakResult<TResult>.Error, retryAttempts);
         }
 
+        public Task<RiakResult<IEnumerable<TResult>>> UseConnection<TResult>(Func<IRiakConnection, Task<RiakResult<IEnumerable<TResult>>>> useFun, int retryAttempts)
+        {
+            return UseConnection(useFun, RiakResult<IEnumerable<TResult>>.Error, retryAttempts);
+        }
+
         protected abstract Task<RiakResult> UseConnection(Func<IRiakConnection, Task<RiakResult>> useFun,
             Func<ResultCode, string, bool, RiakResult> onError, int retryAttempts);
 
         protected abstract Task<RiakResult<T>> UseConnection<T>(Func<IRiakConnection, Task<RiakResult<T>>> useFun,
             Func<ResultCode, string, bool, RiakResult<T>> onError, int retryAttempts);
 
-        public abstract Task<RiakResult<IEnumerable<TResult>>> UseDelayedConnection<TResult>(
-            Func<IRiakConnection, Action, Task<RiakResult<IEnumerable<TResult>>>> useFun, int retryAttempts);
+        protected abstract Task<RiakResult<IEnumerable<T>>> UseConnection<T>(Func<IRiakConnection, Task<RiakResult<IEnumerable<T>>>> useFun, 
+            Func<ResultCode, string, bool, RiakResult<IEnumerable<T>>> onError, int retryAttempts);
+        
+        public Task<RiakResult> UseConnection(Func<IRiakConnection, Action, Task<RiakResult>> useFun, int retryAttempts)
+        {
+            return UseConnection(useFun, RiakResult.Error, retryAttempts);
+        }
+
+        public Task<RiakResult<TResult>> UseConnection<TResult>(Func<IRiakConnection, Action, Task<RiakResult<TResult>>> useFun, int retryAttempts)
+        {
+            return UseConnection(useFun, RiakResult<TResult>.Error, retryAttempts);
+        }
+
+        public Task<RiakResult<IEnumerable<TResult>>> UseConnection<TResult>(Func<IRiakConnection, Action, Task<RiakResult<IEnumerable<TResult>>>> useFun, int retryAttempts)
+        {
+            return UseConnection(useFun, RiakResult<IEnumerable<TResult>>.Error, retryAttempts);
+        }
+
+        protected abstract Task<RiakResult> UseConnection(Func<IRiakConnection, Action, Task<RiakResult>> useFun,
+            Func<ResultCode, string, bool, RiakResult> onError, int retryAttempts);
+
+        protected abstract Task<RiakResult<T>> UseConnection<T>(Func<IRiakConnection, Action, Task<RiakResult<T>>> useFun,
+            Func<ResultCode, string, bool, RiakResult<T>> onError, int retryAttempts);
+
+        protected abstract Task<RiakResult<IEnumerable<T>>> UseConnection<T>(Func<IRiakConnection, Action, Task<RiakResult<IEnumerable<T>>>> useFun,
+            Func<ResultCode, string, bool, RiakResult<IEnumerable<T>>> onError, int retryAttempts);
 
         public abstract void Dispose();
     }

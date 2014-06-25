@@ -14,7 +14,6 @@
 // specific language governing permissions and limitations
 // under the License.
 
-using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using CorrugatedIron.Comms.Sockets;
@@ -84,32 +83,39 @@ namespace CorrugatedIron.Comms
         private async Task ReceiveAsync(Socket socket, ArraySegment<byte> buffer)
         {
             var awaitable = _socketAwaitablePool.Take();
+            var originalBuffer = buffer;
+            awaitable.Buffer = originalBuffer;
             try
             {
-                awaitable.Buffer = buffer;
+                while (true)
+                {       
+                    var result = await socket.ReceiveAsync(awaitable);
 
-                var result = await socket.ReceiveAsync(awaitable);
+                    if (result != SocketError.Success)
+                    {
+                        throw new RiakException("Unable to read data from the source stream: {0}:{1} error code {2}"
+                            .Fmt(_endPoint.Host, _endPoint.Port, result));
+                    }
 
-                if (result != SocketError.Success)
-                {
-                    throw new RiakException("Unable to read data from the source stream: {0}:{1} error code {2}"
-                        .Fmt(_endPoint.Host, _endPoint.Port, result));
-                }
+                    if (awaitable.Arguments.BytesTransferred == 0)
+                    {
+                        //throw new RiakException("Unable to read data from the source stream - Timed Out.");
 
-                if (awaitable.Arguments.BytesTransferred == 0)
-                {
-                    throw new RiakException("Unable to read data from the source stream: {0}:{1} remote server closed connection"
-                        .Fmt(_endPoint.Host, _endPoint.Port));
-                }
+                        throw new RiakException("Unable to read data from the source stream: {0}:{1} remote server closed connection"
+                            .Fmt(_endPoint.Host, _endPoint.Port));
+                    }
 
-                if (awaitable.Buffer.Count != awaitable.Arguments.BytesTransferred)
-                {
-                    throw new RiakException("Unable to read data from the source stream: {0}:{1} error code expecting {2} bytes but only received {3}"
-                        .Fmt(_endPoint.Host, _endPoint.Port, result, awaitable.Buffer.Count));
+                    if (awaitable.Buffer.Count == awaitable.Arguments.BytesTransferred)
+                    {
+                        break;
+                    }
+
+                    awaitable.Buffer = new ArraySegment<byte>(awaitable.Buffer.Array, awaitable.Buffer.Offset + awaitable.Arguments.BytesTransferred, awaitable.Buffer.Count - awaitable.Arguments.BytesTransferred);
                 }
             }
             finally
             {
+                awaitable.Buffer = originalBuffer;
                 awaitable.Clear();
                 _socketAwaitablePool.Add(awaitable);
             }
@@ -131,16 +137,21 @@ namespace CorrugatedIron.Comms
                         throw new RiakException("Failed to send data to server - Timed Out: {0}:{1} error code {2}".Fmt(_endPoint.Host, _endPoint.Port, result));
                     }
 
-                    if (awaitable.Buffer.Count == awaitable.Transferred.Count) 
+                    if (awaitable.Transferred.Count == 0)
                     {
-                        return; // Break if all the data is sent.
+                        throw new RiakException("Failed to send data to server - Timed Out: {0}:{1}".Fmt(_endPoint.Host, _endPoint.Port));
+                    }
+
+                    if (awaitable.Arguments.Count == awaitable.Transferred.Count)
+                    {
+                        break;
                     } 
 
                     // Set the buffer to send the remaining data.
                     awaitable.Buffer = new ArraySegment<byte>(
-                        awaitable.Buffer.Array,
-                        awaitable.Buffer.Offset + awaitable.Transferred.Count,
-                        awaitable.Buffer.Count - awaitable.Transferred.Count);
+                        awaitable.Arguments.Buffer,
+                        awaitable.Arguments.Offset + awaitable.Transferred.Count,
+                        awaitable.Arguments.Count - awaitable.Transferred.Count);
                 }
             }
             finally
@@ -209,14 +220,16 @@ namespace CorrugatedIron.Comms
                 return _socket;
             }
 
-            _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+            var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
             {
                 NoDelay = true,
                 ReceiveTimeout = _receiveTimeout,
                 SendTimeout = _sendTimeout
             };
 
-            await ConnectAsync(_socket, _endPoint);
+            await ConnectAsync(socket, _endPoint);
+
+            _socket = socket;
 
             return _socket;
         }
@@ -225,7 +238,6 @@ namespace CorrugatedIron.Comms
         {
             const int sizeSize = sizeof(int);
             const int codeSize = sizeof(byte);
-            const int headerSize = sizeSize + codeSize;
 
             var buffer = _blockingBufferManager.GetBuffer();
             try
@@ -234,11 +246,11 @@ namespace CorrugatedIron.Comms
 
                 var messageBody = new ArraySegment<byte>(
                     buffer.Array,
-                    0,
-                    headerSize);
+                    buffer.Offset,
+                    sizeSize + codeSize);
 
-                Array.Copy(size, messageBody.Array, sizeSize);
-                messageBody.Array[sizeSize] = (byte) messageCode;
+                Array.Copy(size, 0, messageBody.Array, messageBody.Offset, sizeSize);
+                messageBody.Array[messageBody.Offset + sizeSize] = (byte)messageCode;
 
                 var socket = await GetConnectedSocket();
                 await SendAsync(socket, messageBody);
@@ -253,8 +265,7 @@ namespace CorrugatedIron.Comms
         {
             const int sizeSize = sizeof(int);
             const int codeSize = sizeof(byte);
-            const int headerSize = sizeSize + codeSize;
-
+    
             var messageCode = TypeToMessageCodeMap[typeof(T)];
 
             if (message == null)
@@ -268,18 +279,18 @@ namespace CorrugatedIron.Comms
             {
                 using (var stream = new ArraySegmentStream(buffer.Array))
                 {
-                    stream.Position += headerSize;
+                    stream.Position += buffer.Offset + sizeSize + codeSize;
                     Serializer.Serialize(stream, message);
-                    var messageLength = stream.Position;
+                    var messageLength = (int)stream.Position - buffer.Offset - sizeSize;
 
-                    var size = BitConverter.GetBytes(IPAddress.HostToNetworkOrder((int)messageLength - sizeSize));
-                    Array.Copy(size, buffer.Array, sizeSize);
-                    buffer.Array[sizeSize] = (byte)messageCode;
+                    var size = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(messageLength));
+                    Array.Copy(size, 0, buffer.Array, buffer.Offset, sizeSize);
+                    buffer.Array[buffer.Offset + sizeSize] = (byte)messageCode;
 
                     var messageBody = new ArraySegment<byte>(
                         buffer.Array,
-                        0,
-                        (int)stream.Length);
+                        buffer.Offset,
+                        sizeSize + (int)messageLength);
 
                     var socket = await GetConnectedSocket();
                     await SendAsync(socket, messageBody);
@@ -295,29 +306,43 @@ namespace CorrugatedIron.Comms
         {
             const int sizeSize = sizeof(int);
             const int codeSize = sizeof(byte);
-            const int headerSize = sizeSize + codeSize;
 
             var buffer = _blockingBufferManager.GetBuffer();
             try
             {
                 var socket = await GetConnectedSocket();
 
-                var headerBuffer = new ArraySegment<byte>(buffer.Array, 0, headerSize);
+                var headerBuffer = new ArraySegment<byte>(buffer.Array, buffer.Offset, sizeSize+codeSize);
 
                 await ReceiveAsync(socket, headerBuffer);
-                
-                var size = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(headerBuffer.Array, 0));
-                var messageCode = (MessageCode)headerBuffer.Array[sizeof(int)];
+
+                var messageLength = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(headerBuffer.Array, headerBuffer.Offset));
+                var messageCode = (MessageCode)headerBuffer.Array[headerBuffer.Offset + sizeSize];
                 
                 if (messageCode == MessageCode.ErrorResp)
                 {
-                    var errorBuffer = new ArraySegment<byte>(buffer.Array, headerSize, size-codeSize);
+                    if (messageLength - codeSize  < 1)
+                    {
+                        var error = new RpbErrorResp();
+                        throw new RiakException(error.errcode, error.errmsg.FromRiakString(), false);
+                    }
+
+                    var errorBuffer = new ArraySegment<byte>(headerBuffer.Array, headerBuffer.Offset + sizeSize + codeSize, messageLength - codeSize);
 
                     await ReceiveAsync(socket, errorBuffer);
                     
                     using (var stream = new MemoryStream(errorBuffer.Array, errorBuffer.Offset, errorBuffer.Count))
                     {
-                        var error = Serializer.Deserialize<RpbErrorResp>(stream);
+                        RpbErrorResp error = null;
+                        try
+                        {
+                            error = Serializer.Deserialize<RpbErrorResp>(stream);
+                        }
+                        catch (Exception exception)
+                        {
+                            var m = exception.Message;
+                            throw;
+                        }
                         throw new RiakException(error.errcode, error.errmsg.FromRiakString(), false);
                     }
                 }
@@ -339,29 +364,42 @@ namespace CorrugatedIron.Comms
         {
             const int sizeSize = sizeof (int);
             const int codeSize = sizeof (byte);
-            const int headerSize = sizeSize + codeSize;
 
             var buffer = _blockingBufferManager.GetBuffer();
             try
             {
                 var socket = await GetConnectedSocket();
 
-                var headerBuffer = new ArraySegment<byte>(buffer.Array, 0, headerSize);
+                var headerBuffer = new ArraySegment<byte>(buffer.Array, buffer.Offset, sizeSize + codeSize);
 
                 await ReceiveAsync(socket, headerBuffer);
-                
-                var size = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(headerBuffer.Array, 0));
-                var messageCode = (MessageCode) headerBuffer.Array[sizeof (int)];
+
+                var messageLength = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(headerBuffer.Array, headerBuffer.Offset));
+                var messageCode = (MessageCode)headerBuffer.Array[headerBuffer.Offset + sizeSize];
 
                 if (messageCode == MessageCode.ErrorResp)
                 {
-                    var errorBuffer = new ArraySegment<byte>(buffer.Array, headerSize, size - codeSize);
+                    if (messageLength - codeSize < 1)
+                    {
+                        var error = new RpbErrorResp();
+                        throw new RiakException(error.errcode, error.errmsg.FromRiakString(), false);
+                    }
+
+                    var errorBuffer = new ArraySegment<byte>(headerBuffer.Array, headerBuffer.Offset + sizeSize + codeSize, messageLength - codeSize);
 
                     await ReceiveAsync(socket, errorBuffer);
  
                     using (var stream = new MemoryStream(errorBuffer.Array, errorBuffer.Offset, errorBuffer.Count))
                     {
-                        var error = Serializer.Deserialize<RpbErrorResp>(stream);
+                        RpbErrorResp error = null;
+                        try{
+                            error = Serializer.Deserialize<RpbErrorResp>(stream);  
+                        }
+                        catch (Exception exception)
+                        {
+                            var m = exception.Message;
+                            throw;
+                        }
                         throw new RiakException(error.errcode, error.errmsg.FromRiakString(), false);
                     }
                 }
@@ -382,19 +420,27 @@ namespace CorrugatedIron.Comms
                 }
 #endif
 
-                if (size - codeSize <= 1)
+                if (messageLength - codeSize <= 1)
                 {
                     return new T();
                 }
 
-                var bodyBuffer = new ArraySegment<byte>(buffer.Array, headerSize, size - codeSize);
+                var bodyBuffer = new ArraySegment<byte>(headerBuffer.Array, headerBuffer.Offset + sizeSize + codeSize, messageLength - codeSize);
 
                 await ReceiveAsync(socket, bodyBuffer);
  
                 using (var stream = new MemoryStream(bodyBuffer.Array, bodyBuffer.Offset, bodyBuffer.Count))
                 {
-                    var message = Serializer.Deserialize<T>(stream);
-                    return message;
+                    try
+                    {
+                        var message = Serializer.Deserialize<T>(stream);
+                        return message;
+                    }
+                    catch (Exception exception)
+                    {
+                        var m = exception.Message;
+                        throw;
+                    }
                 }
             }
             finally
