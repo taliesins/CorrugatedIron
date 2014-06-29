@@ -83,8 +83,7 @@ namespace CorrugatedIron.Comms
         private async Task ReceiveAsync(Socket socket, ArraySegment<byte> buffer)
         {
             var awaitable = _socketAwaitablePool.Take();
-            var originalBuffer = buffer;
-            awaitable.Buffer = originalBuffer;
+            awaitable.Buffer = new ArraySegment<byte>(buffer.Array, buffer.Offset, buffer.Count);
             try
             {
                 while (true)
@@ -99,23 +98,23 @@ namespace CorrugatedIron.Comms
 
                     if (awaitable.Arguments.BytesTransferred == 0)
                     {
-                        //throw new RiakException("Unable to read data from the source stream - Timed Out.");
-
                         throw new RiakException("Unable to read data from the source stream: {0}:{1} remote server closed connection"
                             .Fmt(_endPoint.Host, _endPoint.Port));
                     }
 
-                    if (awaitable.Buffer.Count == awaitable.Arguments.BytesTransferred)
+                    if (awaitable.Arguments.Count == awaitable.Arguments.BytesTransferred)
                     {
                         break;
                     }
 
-                    awaitable.Buffer = new ArraySegment<byte>(awaitable.Buffer.Array, awaitable.Buffer.Offset + awaitable.Arguments.BytesTransferred, awaitable.Buffer.Count - awaitable.Arguments.BytesTransferred);
+                    awaitable.Buffer = new ArraySegment<byte>(
+                        awaitable.Arguments.Buffer, 
+                        awaitable.Arguments.Offset + awaitable.Arguments.BytesTransferred, 
+                        awaitable.Arguments.Count - awaitable.Arguments.BytesTransferred);
                 }
             }
             finally
             {
-                awaitable.Buffer = originalBuffer;
                 awaitable.Clear();
                 _socketAwaitablePool.Add(awaitable);
             }
@@ -126,7 +125,7 @@ namespace CorrugatedIron.Comms
             var awaitable = _socketAwaitablePool.Take();
             try
             {
-                awaitable.Buffer = buffer;
+                awaitable.Buffer = new ArraySegment<byte>(buffer.Array, buffer.Offset, buffer.Count);
 
                 while (true)
                 {
@@ -137,12 +136,12 @@ namespace CorrugatedIron.Comms
                         throw new RiakException("Failed to send data to server - Timed Out: {0}:{1} error code {2}".Fmt(_endPoint.Host, _endPoint.Port, result));
                     }
 
-                    if (awaitable.Transferred.Count == 0)
+                    if (awaitable.Arguments.BytesTransferred == 0)
                     {
                         throw new RiakException("Failed to send data to server - Timed Out: {0}:{1}".Fmt(_endPoint.Host, _endPoint.Port));
                     }
 
-                    if (awaitable.Arguments.Count == awaitable.Transferred.Count)
+                    if (awaitable.Arguments.Count == awaitable.Arguments.BytesTransferred)
                     {
                         break;
                     } 
@@ -150,8 +149,8 @@ namespace CorrugatedIron.Comms
                     // Set the buffer to send the remaining data.
                     awaitable.Buffer = new ArraySegment<byte>(
                         awaitable.Arguments.Buffer,
-                        awaitable.Arguments.Offset + awaitable.Transferred.Count,
-                        awaitable.Arguments.Count - awaitable.Transferred.Count);
+                        awaitable.Arguments.Offset + awaitable.Arguments.BytesTransferred,
+                        awaitable.Arguments.Count - awaitable.Arguments.BytesTransferred);
                 }
             }
             finally
@@ -381,6 +380,11 @@ namespace CorrugatedIron.Comms
                         throw new RiakException(error.errcode, error.errmsg.FromRiakString(), false);
                     }
 
+                    if (messageLength > buffer.Count)
+                    {
+                        throw new RiakInvalidDataException((byte)0);
+                    }
+
                     var errorBuffer = new ArraySegment<byte>(headerBuffer.Array, headerBuffer.Offset + sizeSize + codeSize, messageLength - codeSize);
 
                     await ReceiveAsync(socket, errorBuffer);
@@ -392,9 +396,19 @@ namespace CorrugatedIron.Comms
                     }
                 }
 
+                if (messageLength > buffer.Count)
+                {
+                    throw new RiakInvalidDataException((byte)0);
+                }
+
                 if (!MessageCodeToTypeMap.ContainsKey(messageCode))
                 {
                     throw new RiakInvalidDataException((byte) messageCode);
+                }
+
+                if (messageLength > buffer.Count)
+                {
+                    throw new RiakInvalidDataException((byte)0);
                 }
 #if DEBUG
                 // This message code validation is here to make sure that the caller

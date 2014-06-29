@@ -168,7 +168,7 @@
 
 #if (DEBUG)
                 //TODO: Remove this when we sure it works 100%
-                //Array.Clear(buffer.Array, buffer.Offset, buffer.Count);
+                Array.Clear(buffer.Array, buffer.Offset, buffer.Count);
 #endif
             }
 
