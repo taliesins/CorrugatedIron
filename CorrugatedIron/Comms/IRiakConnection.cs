@@ -34,13 +34,13 @@ namespace CorrugatedIron.Comms
 
         Task<RiakResult> PbcWriteRead(MessageCode messageCode, MessageCode expectedMessageCode);
 
-        Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcRepeatRead<TResult>(Func<RiakResult<TResult>, bool> repeatRead)
+        Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcRepeatRead<TResult>(Func<RiakResult<TResult>, bool> repeatRead, Action onFinish)
             where TResult : class, new();
 
-        Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcWriteRead<TResult>(MessageCode messageCode, Func<RiakResult<TResult>, bool> repeatRead)
+        Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcWriteRead<TResult>(MessageCode messageCode, Func<RiakResult<TResult>, bool> repeatRead, Action onFinish = null)
             where TResult : class, new();
 
-        Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcWriteRead<TRequest, TResult>(TRequest request, Func<RiakResult<TResult>, bool> repeatRead)
+        Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcWriteRead<TRequest, TResult>(TRequest request, Func<RiakResult<TResult>, bool> repeatRead, Action onFinish = null)
             where TRequest : class
             where TResult : class, new();
 

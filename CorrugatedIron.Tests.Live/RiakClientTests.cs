@@ -34,7 +34,7 @@ namespace CorrugatedIron.Tests.Live
         [Test]
         public void WritingLargeObjectIsSuccessful()
         {
-            var text = Enumerable.Range(0, 1000000).Aggregate(new StringBuilder(), (sb, i) => sb.Append(i.ToString())).ToString();
+            var text = Enumerable.Range(0, 100000).Aggregate(new StringBuilder(), (sb, i) => sb.Append(i.ToString())).ToString();
             var riakObject = new RiakObject(TestBucket, "large", text, RiakConstants.ContentTypes.TextPlain);
             var result = Client.Put(riakObject);
             result.IsSuccess.ShouldBeTrue(result.ErrorMessage);

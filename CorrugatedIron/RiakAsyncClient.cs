@@ -494,7 +494,7 @@ namespace CorrugatedIron
         public async Task<RiakResult<RiakMapReduceResult>> MapReduce(RiakMapReduceQuery query)
         {
             var request = query.ToMessage();
-            var response = await UseConnection(conn => conn.PbcWriteRead<RpbMapRedReq, RpbMapRedResp>(request, r => r.IsSuccess && !r.Value.done));
+            var response = await UseConnection((conn, onFinish) => conn.PbcWriteRead<RpbMapRedReq, RpbMapRedResp>(request, r => r.IsSuccess && !r.Value.done, onFinish));
 
             if (response.IsSuccess)
             {

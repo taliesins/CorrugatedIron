@@ -279,13 +279,15 @@ namespace CorrugatedIron.Comms
                 using (var stream = new MemoryStream(buffer.Array, buffer.Offset, buffer.Count, true))
                 {
                     //We are going to overwrite these bytes
-                    stream.SetLength(sizeSize + codeSize);
+                    //stream.SetLength(sizeSize + codeSize);
 
                     //Goto end of stream so we can add message
-                    stream.Seek(0, SeekOrigin.End);
+                    //stream.Seek(0, SeekOrigin.End);
+
+                    stream.Position = sizeSize + codeSize;
 
                     Serializer.Serialize(stream, message);
-                    var messageLength = (int)stream.Length - sizeSize;
+                    var messageLength = (int)stream.Position - sizeSize;
 
                     var size = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(messageLength));
                     Array.Copy(size, 0, buffer.Array, buffer.Offset, sizeSize);

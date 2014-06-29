@@ -301,6 +301,16 @@ namespace CorrugatedIron
         }
 
         /// <summary>
+        /// Perform a Riak Search query
+        /// </summary>
+        /// <param name="search">The <see cref="RiakSearchRequest"/></param>
+        /// <returns>A <see cref="RiakResult"/> of <see cref="RiakSearchResult"/></returns>
+        public RiakResult<RiakSearchResult> Search(RiakSearchRequest search)
+        {
+            return Async.Search(search).Result;
+        }
+
+        /// <summary>
         /// Execute a map reduce query.
         /// </summary>
         /// <param name="query">A <see cref="RiakMapReduceQuery"/></param>
@@ -309,16 +319,6 @@ namespace CorrugatedIron
         {
             var result = Async.MapReduce(query).Result;
             return result;
-         }
-
-        /// <summary>
-        /// Perform a Riak Search query
-        /// </summary>
-        /// <param name="search">The <see cref="RiakSearchRequest"/></param>
-        /// <returns>A <see cref="RiakResult"/> of <see cref="RiakSearchResult"/></returns>
-        public RiakResult<RiakSearchResult> Search(RiakSearchRequest search)
-        {
-            return Async.Search(search).Result;
         }
 
         /// <summary>
