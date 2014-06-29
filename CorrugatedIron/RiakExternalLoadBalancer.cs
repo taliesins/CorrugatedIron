@@ -104,7 +104,7 @@ namespace CorrugatedIron
             return onError(ResultCode.ClusterOffline, "Unable to access functioning Riak node", true);
         }
 
-        protected async override Task<RiakResult<IEnumerable<T>>> UseConnection<T>(Func<IRiakConnection, Task<RiakResult<IEnumerable<T>>>> useFun, Func<ResultCode, string, bool, RiakResult<IEnumerable<T>>> onError, int retryAttempts)
+        protected async override Task<RiakResult<IObservable<T>>> UseConnection<T>(Func<IRiakConnection, Task<RiakResult<IObservable<T>>>> useFun, Func<ResultCode, string, bool, RiakResult<IObservable<T>>> onError, int retryAttempts)
         {
             if (retryAttempts < 0)
             {
@@ -183,7 +183,7 @@ namespace CorrugatedIron
             return onError(ResultCode.ClusterOffline, "Unable to access functioning Riak node", true);
         }
 
-        protected async override Task<RiakResult<IEnumerable<T>>> UseConnection<T>(Func<IRiakConnection, Action, Task<RiakResult<IEnumerable<T>>>> useFun, Func<ResultCode, string, bool, RiakResult<IEnumerable<T>>> onError, int retryAttempts)
+        protected async override Task<RiakResult<IObservable<T>>> UseConnection<T>(Func<IRiakConnection, Action, Task<RiakResult<IObservable<T>>>> useFun, Func<ResultCode, string, bool, RiakResult<IObservable<T>>> onError, int retryAttempts)
         {
             if (retryAttempts < 0)
             {

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using CorrugatedIron.Messages;
 using CorrugatedIron.Models.Rest;
@@ -35,25 +34,25 @@ namespace CorrugatedIron.Comms
 
         Task<RiakResult> PbcWriteRead(MessageCode messageCode, MessageCode expectedMessageCode);
 
-        Task<RiakResult<IEnumerable<RiakResult<TResult>>>> PbcRepeatRead<TResult>(Func<RiakResult<TResult>, bool> repeatRead)
+        Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcRepeatRead<TResult>(Func<RiakResult<TResult>, bool> repeatRead)
             where TResult : class, new();
 
-        Task<RiakResult<IEnumerable<RiakResult<TResult>>>> PbcWriteRead<TResult>(MessageCode messageCode, Func<RiakResult<TResult>, bool> repeatRead)
+        Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcWriteRead<TResult>(MessageCode messageCode, Func<RiakResult<TResult>, bool> repeatRead)
             where TResult : class, new();
 
-        Task<RiakResult<IEnumerable<RiakResult<TResult>>>> PbcWriteRead<TRequest, TResult>(TRequest request, Func<RiakResult<TResult>, bool> repeatRead)
+        Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcWriteRead<TRequest, TResult>(TRequest request, Func<RiakResult<TResult>, bool> repeatRead)
             where TRequest : class
             where TResult : class, new();
 
-        Task<RiakResult<IEnumerable<RiakResult<TResult>>>> PbcStreamRead<TResult>(Func<RiakResult<TResult>, bool> repeatRead, Action onFinish)
+        Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcStreamRead<TResult>(Func<RiakResult<TResult>, bool> repeatRead, Action onFinish)
             where TResult : class, new();
 
-        Task<RiakResult<IEnumerable<RiakResult<TResult>>>> PbcWriteStreamRead<TRequest, TResult>(TRequest request,
+        Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcWriteStreamRead<TRequest, TResult>(TRequest request,
             Func<RiakResult<TResult>, bool> repeatRead, Action onFinish)
             where TRequest : class
             where TResult : class, new();
 
-        Task<RiakResult<IEnumerable<RiakResult<TResult>>>> PbcWriteStreamRead<TResult>(MessageCode messageCode,
+        Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcWriteStreamRead<TResult>(MessageCode messageCode,
             Func<RiakResult<TResult>, bool> repeatRead, Action onFinish)
             where TResult : class, new();
 

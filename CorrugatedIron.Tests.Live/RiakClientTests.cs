@@ -14,6 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+using System.Reactive.Linq;
 using CorrugatedIron.Extensions;
 using CorrugatedIron.Models;
 using CorrugatedIron.Tests.Extensions;
@@ -111,7 +112,7 @@ namespace CorrugatedIron.Tests.Live
 
             var list = new List<RiakObjectId> { oneObjectId, twoObjectId };
 
-            var results = Client.Async.Delete(list).Result;
+            var results = Client.Async.Delete(list).Result.ToEnumerable().ToList();
 
             foreach (var riakResult in results)
             {
@@ -143,7 +144,7 @@ namespace CorrugatedIron.Tests.Live
 
             var list = new List<RiakObjectId> {oneObjectId, twoObjectId};
 
-            var results = Client.Async.Get(list).Result;
+            var results = Client.Async.Get(list).Result.ToEnumerable();
 
             foreach (var result in results)
             {
@@ -186,7 +187,7 @@ namespace CorrugatedIron.Tests.Live
             var one = new RiakObject(TestBucket, "one", TestJson, RiakConstants.ContentTypes.ApplicationJson);
             var two = new RiakObject(TestBucket, "two", TestJson, RiakConstants.ContentTypes.ApplicationJson);
 
-            var results = Client.Async.Put(new List<RiakObject> {one, two}).Result;
+            var results = Client.Async.Put(new List<RiakObject> {one, two}).Result.ToEnumerable();
 
             foreach (var riakResult in results)
             {
@@ -198,7 +199,7 @@ namespace CorrugatedIron.Tests.Live
         [Test]
         public void ListKeysFromIndexReturnsAllKeys()
         {
-            var bucket = TestBucket + "_" + Guid.NewGuid().ToString();
+            var bucket = string.Format("{0}_{1}", TestBucket, Guid.NewGuid());
             var originalKeyList = new List<string>();
 
             for (var i = 0; i < 10; i++)
@@ -225,7 +226,7 @@ namespace CorrugatedIron.Tests.Live
         [Test]
         public void UpdatingCounterOnBucketWithoutAllowMultFails()
         {
-            var bucket = TestBucket + "_" + Guid.NewGuid().ToString();
+            var bucket = string.Format("{0}_{1}", TestBucket, Guid.NewGuid());
             var counter = "counter";
 
             var result = Client.IncrementCounter(bucket, counter, 1);
@@ -236,7 +237,7 @@ namespace CorrugatedIron.Tests.Live
         [Test]
         public void UpdatingCounterOnBucketWithAllowMultIsSuccessful()
         {
-            var bucket = TestBucket + "_" + Guid.NewGuid().ToString();
+            var bucket = string.Format("{0}_{1}", TestBucket, Guid.NewGuid());
             var counter = "counter";
 
             var props = Client.GetBucketProperties(bucket).Value;
@@ -252,7 +253,7 @@ namespace CorrugatedIron.Tests.Live
         [Test]
         public void UpdatingCounterOnBucketWithReturnValueShouldReturnIncrementedCounterValue()
         {
-            var bucket = TestBucket + "_" + Guid.NewGuid().ToString();
+            var bucket = string.Format("{0}_{1}", TestBucket, Guid.NewGuid());
             var counter = "counter";
 
             var props = Client.GetBucketProperties(bucket).Value ?? new RiakBucketProperties();
@@ -276,7 +277,7 @@ namespace CorrugatedIron.Tests.Live
         [Test]
         public void ReadingWithTimeoutSetToZeroShouldImmediatelyReturn()
         {
-            var bucket = TestBucket + "_" + Guid.NewGuid().ToString();
+            var bucket = string.Format("{0}_{1}", TestBucket, Guid.NewGuid());
 
             for (var i = 0; i < 10; i++)
             {

@@ -56,7 +56,7 @@ namespace CorrugatedIron.Tests.RiakClientSetBucketPropertiesTests
             return useFun(ConnectionMock.Object);
         }
 
-        public Task<RiakResult<IEnumerable<TResult>>> UseConnection<TResult>(Func<IRiakConnection, Task<RiakResult<IEnumerable<TResult>>>> useFun, int retryAttempts)
+        public Task<RiakResult<IObservable<TResult>>> UseConnection<TResult>(Func<IRiakConnection, Task<RiakResult<IObservable<TResult>>>> useFun, int retryAttempts)
         {
             throw new NotImplementedException();
         }
@@ -71,7 +71,7 @@ namespace CorrugatedIron.Tests.RiakClientSetBucketPropertiesTests
             throw new NotImplementedException();
         }
 
-        public Task<RiakResult<IEnumerable<TResult>>> UseConnection<TResult>(Func<IRiakConnection, Action, Task<RiakResult<IEnumerable<TResult>>>> useFun, int retryAttempts)
+        public Task<RiakResult<IObservable<TResult>>> UseConnection<TResult>(Func<IRiakConnection, Action, Task<RiakResult<IObservable<TResult>>>> useFun, int retryAttempts)
         {
             throw new NotImplementedException();
         }

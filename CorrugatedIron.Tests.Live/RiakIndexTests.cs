@@ -32,7 +32,7 @@ namespace CorrugatedIron.Tests.Live
     {
         public WhenUsingIndexes ()
         {
-            Bucket = "riak_index_tests";
+            Bucket = "test_bucket_riak_index";
         }
         
         [SetUp]
@@ -166,7 +166,7 @@ namespace CorrugatedIron.Tests.Live
         [Test]
         public void AllKeysReturnsListOfKeys()
         {
-            var bucket = Bucket + "_" + Guid.NewGuid().ToString();
+            var bucket = string.Format("{0}_{1}", Bucket, Guid.NewGuid());
             var originalKeys = new List<string>();
 
             for (var i = 0; i < 10; i++)
@@ -199,7 +199,7 @@ namespace CorrugatedIron.Tests.Live
         [Test]
         public void KeysReturnsSelectiveListOfKeys()
         {
-            var bucket = Bucket + "_" + Guid.NewGuid().ToString();
+            var bucket = string.Format("{0}_{1}", Bucket, Guid.NewGuid());
             var originalKeys = new List<string>();
 
             for (var i = 0; i < 10; i++)
@@ -235,7 +235,7 @@ namespace CorrugatedIron.Tests.Live
         [Test]
         public void ListKeysUsingIndexReturnsAllKeys()
         {
-            var bucket = Bucket + "_" + Guid.NewGuid().ToString();
+            var bucket = string.Format("{0}_{1}", Bucket, Guid.NewGuid());
             var originalKeys = new HashSet<string>();
 
             for (var i = 0; i < 10; i++)

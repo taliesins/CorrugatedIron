@@ -30,6 +30,8 @@ namespace CorrugatedIron.Tests.Live.BucketPropertyTests
     [TestFixture]
     public class WhenDealingWithBucketProperties : LiveRiakConnectionTestBase
     {
+        protected string Bucket = "test_bucket_bucket_properties";
+
         // use the one node configuration here because we might run the risk
         // of hitting different nodes in the configuration before the props
         // are replicated to other nodes.
@@ -42,9 +44,13 @@ namespace CorrugatedIron.Tests.Live.BucketPropertyTests
         public void ListKeysReturnsAllkeys()
         {
             Func<string> generator = () => Guid.NewGuid().ToString();
-            var bucket = generator();
-            var pairs = generator.Replicate(10).Select(f => new RiakObject(bucket, f(), "foo", RiakConstants.ContentTypes.TextPlain)).ToList();
-            Client.Put(pairs);
+            var bucket = string.Format("{0}_{1}", Bucket, generator());
+            var pairs = generator
+                .Replicate(10)
+                .Select(f => new RiakObject(bucket, f(), "foo", RiakConstants.ContentTypes.TextPlain))
+                .ToList();
+
+            var postResults = Client.Put(pairs);
 
             var results = Client.ListKeys(bucket);
             results.IsSuccess.ShouldBeTrue(results.ErrorMessage);
@@ -54,7 +60,7 @@ namespace CorrugatedIron.Tests.Live.BucketPropertyTests
         [Test]
         public void SettingExtendedPropertiesToBucketWithSlashesInNameShouldReturnError()
         {
-            const string bucketName = "not/valid/here";
+            var bucketName = string.Format("{0}_{1}", Bucket, "not/valid/here");
             var props = new RiakBucketProperties()
                 .SetNVal(4)
                 .SetSearch(true)
@@ -68,8 +74,7 @@ namespace CorrugatedIron.Tests.Live.BucketPropertyTests
         [Test]
         public void GettingExtendedPropertiesOnABucketWithoutExtendedPropertiesSetDoesntThrowAnException()
         {
-            var bucketName = Guid.NewGuid().ToString();
-
+            var bucketName = string.Format("{0}_{1}", Bucket, Guid.NewGuid());
             var getResult = Client.GetBucketProperties(bucketName);
             getResult.IsSuccess.ShouldBeTrue(getResult.ErrorMessage);
         }
@@ -80,7 +85,8 @@ namespace CorrugatedIron.Tests.Live.BucketPropertyTests
             // this bucket name must have ONE slash in it. If it has more or less then
             // errors will come out as expected. If there's one, then Riak thinks we're putting
             // a value in the cluster and so the operation works.
-            const string bucketName = "slartibartfast/dentartherdent";
+
+            var bucketName = string.Format("{0}_{1}", Bucket, "slartibartfast/dentartherdent");
             var props = new RiakBucketProperties()
                 .SetNVal(4)
                 .SetSearch(true)
@@ -98,8 +104,7 @@ namespace CorrugatedIron.Tests.Live.BucketPropertyTests
         [Test]
         public void GettingExtendedPropertiesOnInvalidBucketReturnsError()
         {
-            const string bucketName = "this/is/not/a/valid/bucket";
-
+            var bucketName = string.Format("{0}_{1}", Bucket, "this/is/not/a/valid/bucket");
             var getResult = Client.GetBucketProperties(bucketName);
             getResult.IsSuccess.ShouldBeFalse();
         }
@@ -107,7 +112,7 @@ namespace CorrugatedIron.Tests.Live.BucketPropertyTests
         [Test]
         public void SettingSearchOnRiakBucketMakesBucketSearchable()
         {
-            var bucket = Guid.NewGuid().ToString();
+            var bucket = string.Format("{0}_{1}", Bucket, Guid.NewGuid());
             var key = Guid.NewGuid().ToString();
             var props = Client.GetBucketProperties(bucket).Value;
             props.SetSearch(true);
@@ -139,7 +144,8 @@ namespace CorrugatedIron.Tests.Live.BucketPropertyTests
         [Test]
         public void SettingPropertiesOnNewBucketWorksCorrectly()
         {
-            var bucketName = Guid.NewGuid().ToString();
+            var bucketName = string.Format("{0}_{1}", Bucket, Guid.NewGuid());
+
             var props = new RiakBucketProperties()
                 .SetNVal(4)
                 .SetSearch(true)
@@ -302,7 +308,7 @@ namespace CorrugatedIron.Tests.Live.BucketPropertyTests
         [Test]
         public void ResettingBucketPropertiesWorksCorrectly()
         {
-            const string bucket = "Schmoopy";
+            var bucket = string.Format("{0}_{1}", Bucket, "Schmoopy");
 
             var props = new RiakBucketProperties()
                 .SetAllowMultiple(true)

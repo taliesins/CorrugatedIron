@@ -14,29 +14,31 @@
 // specific language governing permissions and limitations
 // under the License.
 
+using System;
+using System.Linq;
+using System.Reactive.Linq;
 using CorrugatedIron.Messages;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace CorrugatedIron.Models.MapReduce
 {
     public class RiakStreamedMapReduceResult : IRiakMapReduceResult
     {
-        private readonly IEnumerable<RiakResult<RpbMapRedResp>> _responseReader;
+        private readonly IEnumerable<RiakMapReduceResultPhase> _responseReader;
 
-        internal RiakStreamedMapReduceResult(IEnumerable<RiakResult<RpbMapRedResp>> responseReader)
+        internal RiakStreamedMapReduceResult(IObservable<RiakResult<RpbMapRedResp>> responseReader)
         {
-            _responseReader = responseReader;
+            _responseReader = responseReader
+                .ToEnumerable()
+                .Select(item => item.IsSuccess
+                    ? new RiakMapReduceResultPhase(item.Value.phase, new List<RpbMapRedResp> { item.Value })
+                    : new RiakMapReduceResultPhase())
+                .ToList();
         }
 
         public IEnumerable<RiakMapReduceResultPhase> PhaseResults
         {
-            get
-            {
-                return _responseReader.Select(item => item.IsSuccess
-                    ? new RiakMapReduceResultPhase(item.Value.phase, new List<RpbMapRedResp> { item.Value })
-                    : new RiakMapReduceResultPhase());
-            }
+            get { return _responseReader; }
         }
     }
 }

@@ -14,6 +14,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+using System.Linq;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
 using CorrugatedIron.Comms;
 using CorrugatedIron.Extensions;
@@ -172,7 +174,7 @@ namespace CorrugatedIron
         /// In addition, applications should plan for multiple failures or multiple cases of siblings being present.</remarks>
         public IEnumerable<RiakResult<RiakObject>> Get(IEnumerable<RiakObjectId> bucketKeyPairs, RiakGetOptions options = null)
         {
-            return Async.Get(bucketKeyPairs, options).Result;
+            return Async.Get(bucketKeyPairs, options).Result.ToEnumerable().ToList();
         }
 
         /// <summary>
@@ -206,7 +208,7 @@ namespace CorrugatedIron
         /// In addition, applications should plan for multiple failures or multiple cases of siblings being present.</remarks>
         public IEnumerable<RiakResult<RiakObject>> Put(IEnumerable<RiakObject> values, RiakPutOptions options = null)
         {
-            return Async.Put(values, options).Result;
+            return Async.Put(values, options).Result.ToEnumerable().ToList();
         }
 
         /// <summary>
@@ -262,7 +264,7 @@ namespace CorrugatedIron
         /// </param>    
         public IEnumerable<RiakResult> Delete(IEnumerable<RiakObjectId> objectIds, RiakDeleteOptions options = null)
         {
-            return Async.Delete(objectIds, options).Result;
+            return Async.Delete(objectIds, options).Result.ToEnumerable().ToList();
         }
 
         /// <summary>
@@ -292,7 +294,10 @@ namespace CorrugatedIron
         /// </remarks>
         public IEnumerable<RiakResult> DeleteBucket(string bucket, RiakDeleteOptions deleteOptions)
         {
-            return Async.DeleteBucket(bucket, deleteOptions).Result;
+            var result = Async.DeleteBucket(bucket, deleteOptions).Result
+                .ToEnumerable()
+                .ToList();
+            return result;
         }
 
         /// <summary>
@@ -302,7 +307,8 @@ namespace CorrugatedIron
         /// <returns>A <see cref="RiakResult"/> of <see cref="RiakMapReduceResult"/></returns>
         public RiakResult<RiakMapReduceResult> MapReduce(RiakMapReduceQuery query)
         {
-            return Async.MapReduce(query).Result;
+            var result = Async.MapReduce(query).Result;
+            return result;
          }
 
         /// <summary>
@@ -337,7 +343,7 @@ namespace CorrugatedIron
         /// physical I/O and can take a long time.</remarks>
         public RiakResult<IEnumerable<string>> ListBuckets()
         {
-            return Async.ListBuckets().Result;
+            return RiakResult<IObservable<string>>.ToEnumerable(Async.ListBuckets().Result);
         }
 
         /// <summary>
@@ -352,7 +358,7 @@ namespace CorrugatedIron
         /// physical I/O and can take a long time. Callers should fully enumerate the collection or else close the connection when finished.</remarks>
         public RiakResult<IEnumerable<string>> StreamListBuckets()
         {
-            return Async.StreamListBuckets().Result;
+            return RiakResult<IObservable<string>>.ToEnumerable(Async.StreamListBuckets().Result);
         }
 
         /// <summary>
@@ -368,7 +374,7 @@ namespace CorrugatedIron
         /// a list of keys. This operation, while cheaper in Riak 1.0 than in earlier versions of Riak, should be avoided.</remarks>
         public RiakResult<IEnumerable<string>> ListKeys(string bucket)
         {
-            return Async.ListKeys(bucket).Result;
+            return RiakResult<IObservable<string>>.ToEnumerable(Async.ListKeys(bucket).Result);
         }
 
         /// <summary>
@@ -381,7 +387,7 @@ namespace CorrugatedIron
         /// use <see cref="ListKeysFromIndex"/></remarks>
         public RiakResult<IEnumerable<string>> StreamListKeys(string bucket)
         {
-            return Async.StreamListKeys(bucket).Result;
+            return RiakResult<IObservable<string>>.ToEnumerable(Async.StreamListKeys(bucket).Result);
         }
 
         /// <summary>
@@ -559,7 +565,6 @@ namespace CorrugatedIron
         {
             return Async.IndexGet(bucket, indexName, minValue, maxValue, options).Result;
         }
-
      
         /// <summary>
         /// Retrieve a indexed values

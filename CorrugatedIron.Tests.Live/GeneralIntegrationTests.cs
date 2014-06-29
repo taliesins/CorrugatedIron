@@ -15,6 +15,8 @@
 // under the License.
 
 using System.Collections.Generic;
+using System.Reactive.Linq;
+using CorrugatedIron.Extensions;
 using CorrugatedIron.Models;
 using CorrugatedIron.Models.MapReduce;
 using CorrugatedIron.Tests.Extensions;
@@ -300,7 +302,7 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
         [Test]
         public void MapReduceQueriesReturnData()
         {
-            var bucket = Guid.NewGuid().ToString();
+            var bucket = string.Format("{0}_{1}", TestBucket, Guid.NewGuid());
 
             for (var i = 1; i < 11; i++)
             {
@@ -339,7 +341,7 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
         [Test]
         public void MapReduceQueriesReturnDataInBatch()
         {
-            var bucket = Guid.NewGuid().ToString();
+            var bucket = string.Format("{0}_{1}", TestBucket, Guid.NewGuid());
 
             Client.Batch(batch =>
                 {
@@ -499,7 +501,7 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
         public void DeleteBucketDeletesAllKeysInABucketInBatch()
         {
             // add multiple keys
-            var bucket = Guid.NewGuid().ToString();
+            var bucket = string.Format("{0}_{1}", TestBucket, Guid.NewGuid());
 
             Client.Batch(batch =>
                 {
@@ -530,7 +532,7 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
         public void DeleteBucketDeletesAllKeysInABucket()
         {
             // add multiple keys
-            var bucket = Guid.NewGuid().ToString();
+            var bucket = string.Format("{0}_{1}", TestBucket, Guid.NewGuid());
 
             for (var i = 1; i < 11; i++)
             {
@@ -558,7 +560,7 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
         public void DeleteBucketDeletesAllKeysInABucketAsynchronously()
         {
             // add multiple keys
-            var bucket = Guid.NewGuid().ToString();
+            var bucket = string.Format("{0}_{1}", TestBucket, Guid.NewGuid());
 
             for (var i = 1; i < 11; i++)
             {
@@ -570,7 +572,8 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
             var keyList = Client.ListKeys(bucket);
             keyList.Value.Count().ShouldEqual(10);
 
-            var result = Client.Async.DeleteBucket(bucket).Result.ToList();
+            var result = Client.Async.DeleteBucket(bucket).Result.ToEnumerable();
+
             result.ForEach(x => x.IsSuccess.ShouldBeTrue(x.ErrorMessage));
             
             // This might fail if you check straight away
@@ -619,7 +622,7 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
         [Test]
         public void AsyncListKeysReturnsTheCorrectNumberOfResults()
         {
-            var bucket = Guid.NewGuid().ToString();
+            var bucket = string.Format("{0}_{1}", TestBucket, Guid.NewGuid());
             
             for (var i = 1; i < 11; i++)
             {
@@ -633,7 +636,7 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
 
             result.IsSuccess.ShouldBeTrue();
             result.Value.ShouldNotBeNull();
-            result.Value.Count().ShouldEqual(10);
+            result.Value.ToEnumerable().Count().ShouldEqual(10);
         }
     }
 }

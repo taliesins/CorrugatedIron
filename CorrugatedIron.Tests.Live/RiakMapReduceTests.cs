@@ -35,7 +35,7 @@ namespace CorrugatedIron.Tests.Live
         protected IRiakClusterConfiguration ClusterConfig;
 
         protected const string MrContentType = RiakConstants.ContentTypes.ApplicationJson;
-        protected string Bucket = "fluent_key_bucket";
+        protected string Bucket = "test_bucket_fluent_key";
         protected const string EmptyBody = "{}";
 
         public RiakMapReduceTests(string section = "riak1NodeConfiguration")
@@ -122,7 +122,6 @@ namespace CorrugatedIron.Tests.Live
             mrResult.PhaseResults.ElementAt(0).Values.Count().ShouldEqual(0);
             mrResult.PhaseResults.ElementAt(1).Values.Count().ShouldNotEqual(0);
    
-            
             var values = result.Value.PhaseResults.ElementAt(1).GetObjects<int[]>().First();
             values[0].ShouldEqual(10);
         }

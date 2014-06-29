@@ -204,18 +204,28 @@ namespace CorrugatedIron
             return onError(result.ResultCode, result.ErrorMessage, result.NodeOffline);
         }
 
-        protected async override Task<RiakResult<IEnumerable<T>>> UseConnection<T>(Func<IRiakConnection, Task<RiakResult<IEnumerable<T>>>> useFun, Func<ResultCode, string, bool, RiakResult<IEnumerable<T>>> onError, int retryAttempts)
+        protected async override Task<RiakResult<IObservable<T>>> UseConnection<T>(Func<IRiakConnection, Task<RiakResult<IObservable<T>>>> useFun, Func<ResultCode, string, bool, RiakResult<IObservable<T>>> onError, int retryAttempts)
         {
-            if (retryAttempts < 0) return onError(ResultCode.NoRetries, "Unable to access a connection on the cluster.", false);
-            if (_disposing) return onError(ResultCode.ShuttingDown, "System currently shutting down", true);
+            if (retryAttempts < 0)
+            {
+                return onError(ResultCode.NoRetries, "Unable to access a connection on the cluster.", false);
+            }
+
+            if (_disposing)
+            {
+                return onError(ResultCode.ShuttingDown, "System currently shutting down", true);
+            }
 
             var node = _loadBalancer.SelectNode();
 
-            if (node == null) return onError(ResultCode.ClusterOffline, "Unable to access functioning Riak node", true);
+            if (node == null)
+            {
+                return onError(ResultCode.ClusterOffline, "Unable to access functioning Riak node", true);
+            }
 
             var result = await node.UseConnection(useFun);
             if (result.IsSuccess) return result;
-            RiakResult<IEnumerable<T>> nextResult = null;
+            RiakResult<IObservable<T>> nextResult = null;
             if (result.ResultCode == ResultCode.NoConnections)
             {
                 Thread.Sleep(RetryWaitTime);
@@ -303,7 +313,7 @@ namespace CorrugatedIron
             return await UseConnection(useFun, retryAttempts - 1);
         }
 
-        protected async override Task<RiakResult<IEnumerable<T>>> UseConnection<T>(Func<IRiakConnection, Action, Task<RiakResult<IEnumerable<T>>>> useFun, Func<ResultCode, string, bool, RiakResult<IEnumerable<T>>> onError, int retryAttempts)
+        protected async override Task<RiakResult<IObservable<T>>> UseConnection<T>(Func<IRiakConnection, Action, Task<RiakResult<IObservable<T>>>> useFun, Func<ResultCode, string, bool, RiakResult<IObservable<T>>> onError, int retryAttempts)
         {
             if (retryAttempts < 0) return onError(ResultCode.NoRetries, "Unable to access a connection on the cluster.", false);
             if (_disposing) return onError(ResultCode.ShuttingDown, "System currently shutting down", true);

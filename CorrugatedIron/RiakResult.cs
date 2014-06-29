@@ -14,6 +14,11 @@
 // specific language governing permissions and limitations
 // under the License.
 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reactive.Linq;
+
 namespace CorrugatedIron
 {
     public class RiakResult
@@ -87,6 +92,20 @@ namespace CorrugatedIron
                 ResultCode = code,
                 ErrorMessage = message,
                 NodeOffline = nodeOffline
+            };
+        }
+
+        internal static RiakResult<IEnumerable<T>> ToEnumerable<T>(RiakResult<IObservable<T>> value)
+        {
+            return new RiakResult<IEnumerable<T>>
+            {
+                Done = value.Done,
+                IsSuccess = value.IsSuccess,
+                ResultCode = value.ResultCode,
+                ErrorMessage = value.ErrorMessage,
+                NodeOffline = value.NodeOffline,
+                Continuation = value.Continuation,
+                Value = value.Value.ToEnumerable().ToList()
             };
         }
 

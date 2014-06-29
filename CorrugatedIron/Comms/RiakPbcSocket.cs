@@ -277,11 +277,16 @@ namespace CorrugatedIron.Comms
             var buffer = _blockingBufferManager.GetBuffer();
             try
             {
-                using (var stream = new ArraySegmentStream(buffer.Array))
+                using (var stream = new MemoryStream(buffer.Array, buffer.Offset, buffer.Count, true))
                 {
-                    stream.Position += buffer.Offset + sizeSize + codeSize;
+                    //We are going to overwrite these bytes
+                    stream.SetLength(sizeSize + codeSize);
+
+                    //Goto end of stream so we can add message
+                    stream.Seek(0, SeekOrigin.End);
+
                     Serializer.Serialize(stream, message);
-                    var messageLength = (int)stream.Position - buffer.Offset - sizeSize;
+                    var messageLength = (int)stream.Length - sizeSize;
 
                     var size = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(messageLength));
                     Array.Copy(size, 0, buffer.Array, buffer.Offset, sizeSize);
@@ -333,16 +338,7 @@ namespace CorrugatedIron.Comms
                     
                     using (var stream = new MemoryStream(errorBuffer.Array, errorBuffer.Offset, errorBuffer.Count))
                     {
-                        RpbErrorResp error = null;
-                        try
-                        {
-                            error = Serializer.Deserialize<RpbErrorResp>(stream);
-                        }
-                        catch (Exception exception)
-                        {
-                            var m = exception.Message;
-                            throw;
-                        }
+                        var error = Serializer.Deserialize<RpbErrorResp>(stream);
                         throw new RiakException(error.errcode, error.errmsg.FromRiakString(), false);
                     }
                 }
@@ -391,15 +387,7 @@ namespace CorrugatedIron.Comms
  
                     using (var stream = new MemoryStream(errorBuffer.Array, errorBuffer.Offset, errorBuffer.Count))
                     {
-                        RpbErrorResp error = null;
-                        try{
-                            error = Serializer.Deserialize<RpbErrorResp>(stream);  
-                        }
-                        catch (Exception exception)
-                        {
-                            var m = exception.Message;
-                            throw;
-                        }
+                        var error = Serializer.Deserialize<RpbErrorResp>(stream);  
                         throw new RiakException(error.errcode, error.errmsg.FromRiakString(), false);
                     }
                 }
@@ -431,16 +419,8 @@ namespace CorrugatedIron.Comms
  
                 using (var stream = new MemoryStream(bodyBuffer.Array, bodyBuffer.Offset, bodyBuffer.Count))
                 {
-                    try
-                    {
-                        var message = Serializer.Deserialize<T>(stream);
-                        return message;
-                    }
-                    catch (Exception exception)
-                    {
-                        var m = exception.Message;
-                        throw;
-                    }
+                    var message = Serializer.Deserialize<T>(stream);
+                    return message;
                 }
             }
             finally

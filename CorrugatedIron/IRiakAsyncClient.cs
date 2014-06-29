@@ -16,29 +16,29 @@ namespace CorrugatedIron
         Task<RiakResult<RiakObject>> Get(string bucket, string key, RiakGetOptions options = null);
         Task<RiakResult<RiakObject>> Get(RiakObjectId objectId, RiakGetOptions options = null);
 
-        Task<IEnumerable<RiakResult<RiakObject>>> Get(IEnumerable<RiakObjectId> bucketKeyPairs, RiakGetOptions options = null);
+        Task<IObservable<RiakResult<RiakObject>>> Get(IEnumerable<RiakObjectId> bucketKeyPairs, RiakGetOptions options = null);
 
         Task<RiakCounterResult> IncrementCounter(string bucket, string counter, long amount, RiakCounterUpdateOptions options = null);
         Task<RiakCounterResult> GetCounter(string bucket, string counter, RiakCounterGetOptions options = null);
 
         Task<RiakResult<RiakObject>> Put(RiakObject value, RiakPutOptions options = null);
-        Task<IEnumerable<RiakResult<RiakObject>>> Put(IEnumerable<RiakObject> values, RiakPutOptions options = null);
+        Task<IObservable<RiakResult<RiakObject>>> Put(IEnumerable<RiakObject> values, RiakPutOptions options = null);
 
         Task<RiakResult> Delete(RiakObject riakObject, RiakDeleteOptions options = null);
         Task<RiakResult> Delete(string bucket, string key, RiakDeleteOptions options = null);
         Task<RiakResult> Delete(RiakObjectId objectId, RiakDeleteOptions options = null);
-        Task<IEnumerable<RiakResult>> Delete(IEnumerable<RiakObjectId> objectIds, RiakDeleteOptions options = null);
-        Task<IEnumerable<RiakResult>> DeleteBucket(string bucket, RiakDeleteOptions deleteOptions = null);
+        Task<IObservable<RiakResult>> Delete(IEnumerable<RiakObjectId> objectIds, RiakDeleteOptions options = null);
+        Task<IObservable<RiakResult>> DeleteBucket(string bucket, RiakDeleteOptions deleteOptions = null);
 
         Task<RiakResult<RiakSearchResult>> Search(RiakSearchRequest search);
 
         Task<RiakResult<RiakMapReduceResult>> MapReduce(RiakMapReduceQuery query);
         Task<RiakResult<RiakStreamedMapReduceResult>> StreamMapReduce(RiakMapReduceQuery query);
 
-        Task<RiakResult<IEnumerable<string>>> ListBuckets();
-        Task<RiakResult<IEnumerable<string>>> StreamListBuckets();
-        Task<RiakResult<IEnumerable<string>>> ListKeys(string bucket);
-        Task<RiakResult<IEnumerable<string>>> StreamListKeys(string bucket);
+        Task<RiakResult<IObservable<string>>> ListBuckets();
+        Task<RiakResult<IObservable<string>>> StreamListBuckets();
+        Task<RiakResult<IObservable<string>>> ListKeys(string bucket);
+        Task<RiakResult<IObservable<string>>> StreamListKeys(string bucket);
 
         Task<RiakResult<RiakBucketProperties>> GetBucketProperties(string bucket);
         Task<RiakResult> SetBucketProperties(string bucket, RiakBucketProperties properties, bool useHttp = false);

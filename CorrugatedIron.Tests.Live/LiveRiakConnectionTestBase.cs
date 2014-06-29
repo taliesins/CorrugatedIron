@@ -30,12 +30,12 @@ namespace CorrugatedIron.Tests.Live.LiveRiakConnectionTests
         protected const string TestBucket = "test_bucket";
         protected const string TestKey = "test_json";
         protected static readonly string TestJson;
-        protected const string MapReduceBucket = "map_reduce_bucket";
-        protected const string MultiBucket = "test_multi_bucket";
+        protected const string MapReduceBucket = "test_bucket_map_reduce_bucket";
+        protected const string MultiBucket = "test_bucket_multi_bucket";
         protected const string MultiKey = "test_multi_key";
         protected const string MultiBodyOne = @"{""dishes"": 9}";
         protected const string MultiBodyTwo = @"{""dishes"": 11}";
-        protected const string PropertiesTestBucket = @"propertiestestbucket";
+        protected const string PropertiesTestBucket = @"test_bucket_propertiestestbucket";
 
         protected IRiakEndPoint Cluster;
         protected IRiakClient Client;
