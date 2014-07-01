@@ -9,7 +9,7 @@ namespace CorrugatedIron.Comms
     {
         bool IsIdle { get; }
 
-        void Disconnect();
+        Task Disconnect();
 
         // PBC interface
         Task<RiakResult<TResult>> PbcRead<TResult>()

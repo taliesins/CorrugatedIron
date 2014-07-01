@@ -106,7 +106,7 @@ namespace CorrugatedIron.Tests.RiakClientSetBucketPropertiesTests
         public void SetUp()
         {
             var result = RiakResult<RiakRestResponse>.Success(new RiakRestResponse { StatusCode = System.Net.HttpStatusCode.NoContent });
-            Cluster.ConnectionMock.Setup(m => m.RestRequest(It.IsAny<RiakRestRequest>()).Result).Returns(result);
+            Cluster.ConnectionMock.Setup(m => m.RestRequest(It.IsAny<RiakRestRequest>()).ConfigureAwait(false).GetAwaiter().GetResult()).Returns(result);
 
             Response = Client.SetBucketProperties("foo", new RiakBucketProperties().SetAllowMultiple(true).SetRVal("one"));
         }

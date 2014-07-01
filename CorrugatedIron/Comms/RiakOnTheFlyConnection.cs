@@ -52,13 +52,15 @@ namespace CorrugatedIron.Comms
 
                 Func<Task<TResult>, object, TResult> cleanup = (task, state) =>
                 {
+                    var r = task.ConfigureAwait(false).GetAwaiter().GetResult();
+
                     var riakConnection = state as IRiakConnection;
                     if (riakConnection != null)
                     {
                         riakConnection.Dispose();
                     }
 
-                    return task.Result;
+                    return r;
                 };
 
                 var result = consumer(conn)

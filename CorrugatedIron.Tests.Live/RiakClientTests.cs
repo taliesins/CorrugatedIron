@@ -88,7 +88,7 @@ namespace CorrugatedIron.Tests.Live
             var putResult = Client.Put(riakObject);
             putResult.IsSuccess.ShouldBeTrue(putResult.ErrorMessage);
 
-            var result = Client.Async.Delete(riakObjectId).Result;
+            var result = Client.Async.Delete(riakObjectId).ConfigureAwait(false).GetAwaiter().GetResult();
 
             result.IsSuccess.ShouldBeTrue(result.ErrorMessage);
 
@@ -112,7 +112,7 @@ namespace CorrugatedIron.Tests.Live
 
             var list = new List<RiakObjectId> { oneObjectId, twoObjectId };
 
-            var results = Client.Async.Delete(list).Result.ToEnumerable().ToList();
+            var results = Client.Async.Delete(list).ConfigureAwait(false).GetAwaiter().GetResult().ToEnumerable().ToList();
 
             foreach (var riakResult in results)
             {
@@ -144,7 +144,7 @@ namespace CorrugatedIron.Tests.Live
 
             var list = new List<RiakObjectId> {oneObjectId, twoObjectId};
 
-            var results = Client.Async.Get(list).Result.ToEnumerable();
+            var results = Client.Async.Get(list).ConfigureAwait(false).GetAwaiter().GetResult().ToEnumerable();
 
             foreach (var result in results)
             {
@@ -161,7 +161,7 @@ namespace CorrugatedIron.Tests.Live
 
             Client.Put(riakObject);
 
-            var result = Client.Async.Get(riakObjectId).Result;
+            var result = Client.Async.Get(riakObjectId).ConfigureAwait(false).GetAwaiter().GetResult();
 
             result.IsSuccess.ShouldBeTrue(result.ErrorMessage);
             result.Value.ShouldNotBeNull();
@@ -175,7 +175,7 @@ namespace CorrugatedIron.Tests.Live
         {
             var riakObject = new RiakObject(TestBucket, TestKey, TestJson, RiakConstants.ContentTypes.ApplicationJson);
 
-            var result = Client.Async.Put(riakObject).Result;
+            var result = Client.Async.Put(riakObject).ConfigureAwait(false).GetAwaiter().GetResult();
             
             result.IsSuccess.ShouldBeTrue(result.ErrorMessage);
             result.Value.ShouldNotBeNull();
@@ -187,7 +187,7 @@ namespace CorrugatedIron.Tests.Live
             var one = new RiakObject(TestBucket, "one", TestJson, RiakConstants.ContentTypes.ApplicationJson);
             var two = new RiakObject(TestBucket, "two", TestJson, RiakConstants.ContentTypes.ApplicationJson);
 
-            var results = Client.Async.Put(new List<RiakObject> {one, two}).Result.ToEnumerable();
+            var results = Client.Async.Put(new List<RiakObject> {one, two}).ConfigureAwait(false).GetAwaiter().GetResult().ToEnumerable();
 
             foreach (var riakResult in results)
             {

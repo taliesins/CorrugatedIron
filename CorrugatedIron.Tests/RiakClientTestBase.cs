@@ -41,7 +41,7 @@ namespace CorrugatedIron.Tests.RiakClientTests
             ConnFactoryMock = new Mock<IRiakConnectionFactory>();
             NodeConfigMock = new Mock<IRiakNodeConfiguration>();
 
-            ConnMock.Setup(m => m.PbcWriteRead<TRequest, TResult>(It.IsAny<TRequest>()).Result).Returns(() => Result);
+            ConnMock.Setup(m => m.PbcWriteRead<TRequest, TResult>(It.IsAny<TRequest>()).ConfigureAwait(false).GetAwaiter().GetResult()).Returns(() => Result);
             ConnFactoryMock.Setup(m => m.CreateConnection(It.IsAny<IRiakNodeConfiguration>(), It.IsAny<SocketAwaitablePool>(), It.IsAny<BlockingBufferManager>())).Returns(ConnMock.Object);
             NodeConfigMock.SetupGet(m => m.PoolSize).Returns(1);
             NodeConfigMock.SetupGet(m => m.BufferSize).Returns(2097152);

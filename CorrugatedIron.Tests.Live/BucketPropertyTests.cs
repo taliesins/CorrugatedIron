@@ -266,15 +266,15 @@ namespace CorrugatedIron.Tests.Live.BucketPropertyTests
             var task = Client.Async.Batch(batch =>
                 {
                     // make sure we're all clear first
-                    var result = batch.GetBucketProperties(PropertiesTestBucket).Result;
+                    var result = batch.GetBucketProperties(PropertiesTestBucket).ConfigureAwait(false).GetAwaiter().GetResult();
                     result.IsSuccess.ShouldBeTrue(result.ErrorMessage);
                     var props = result.Value;
                     props.ClearPostCommitHooks().ClearPreCommitHooks();
-                    var propResult = batch.SetBucketProperties(PropertiesTestBucket, props).Result;
+                    var propResult = batch.SetBucketProperties(PropertiesTestBucket, props).ConfigureAwait(false).GetAwaiter().GetResult();
                     propResult.IsSuccess.ShouldBeTrue(propResult.ErrorMessage);
 
                     // when we load, the commit hook lists should be null
-                    result = batch.GetBucketProperties(PropertiesTestBucket).Result;
+                    result = batch.GetBucketProperties(PropertiesTestBucket).ConfigureAwait(false).GetAwaiter().GetResult();
                     result.IsSuccess.ShouldBeTrue(result.ErrorMessage);
                     props = result.Value;
                     props.PreCommitHooks.ShouldBeNull();
@@ -284,11 +284,11 @@ namespace CorrugatedIron.Tests.Live.BucketPropertyTests
                     props.AddPreCommitHook(new RiakJavascriptCommitHook("Foo.doBar"))
                         .AddPreCommitHook(new RiakErlangCommitHook("my_mod", "do_fun"))
                         .AddPostCommitHook(new RiakErlangCommitHook("my_other_mod", "do_more"));
-                    propResult = batch.SetBucketProperties(PropertiesTestBucket, props).Result;
+                    propResult = batch.SetBucketProperties(PropertiesTestBucket, props).ConfigureAwait(false).GetAwaiter().GetResult();
                     propResult.IsSuccess.ShouldBeTrue(propResult.ErrorMessage);
 
                     // load them out again and make sure they got loaded up
-                    result = batch.GetBucketProperties(PropertiesTestBucket).Result;
+                    result = batch.GetBucketProperties(PropertiesTestBucket).ConfigureAwait(false).GetAwaiter().GetResult();
                     result.IsSuccess.ShouldBeTrue(result.ErrorMessage);
                     props = result.Value;
 

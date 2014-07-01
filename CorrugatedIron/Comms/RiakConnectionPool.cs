@@ -58,11 +58,13 @@ namespace CorrugatedIron.Comms
                 {
                     Func<Task<TResult>, TResult> cleanup = (task) =>
                     {
+                        var r = task.ConfigureAwait(false).GetAwaiter().GetResult();
+
                         var i = instance;
                         instance = null;
                         _resources.Add(i);
 
-                        return task.Result;
+                        return r;
                     };
 
                     var result = consumer(instance)

@@ -266,7 +266,7 @@ namespace CorrugatedIron.Comms
             where TRequest : class
             where TResult : class, new()
         {
-            var streamer = PbcWriteStreamReadIterator(request, repeatRead);
+            var streamer = await PbcWriteStreamReadIterator(request, repeatRead);
             return RiakResult<IObservable<RiakResult<TResult>>>.Success(streamer);
         }
 
@@ -274,16 +274,16 @@ namespace CorrugatedIron.Comms
             Func<RiakResult<TResult>, bool> repeatRead)
             where TResult : class, new()
         {
-            var streamer = PbcWriteStreamReadIterator(messageCode, repeatRead);
+            var streamer = await PbcWriteStreamReadIterator(messageCode, repeatRead);
             return RiakResult<IObservable<RiakResult<TResult>>>.Success(streamer);
         }
 
-        private IObservable<RiakResult<TResult>> PbcWriteStreamReadIterator<TRequest, TResult>(TRequest request,
+        private async Task<IObservable<RiakResult<TResult>>> PbcWriteStreamReadIterator<TRequest, TResult>(TRequest request,
             Func<RiakResult<TResult>, bool> repeatRead)
             where TRequest : class
             where TResult : class, new()
         {
-            var writeResult = PbcWrite(request).Result;
+            var writeResult = await PbcWrite(request);
             if(writeResult.IsSuccess)
             {
                 return PbcStreamReadIterator(repeatRead);
@@ -291,11 +291,11 @@ namespace CorrugatedIron.Comms
             return new[] { RiakResult<TResult>.Error(writeResult.ResultCode, writeResult.ErrorMessage, writeResult.NodeOffline) }.ToObservable();
         }
 
-        private IObservable<RiakResult<TResult>> PbcWriteStreamReadIterator<TResult>(MessageCode messageCode,
+        private async Task<IObservable<RiakResult<TResult>>> PbcWriteStreamReadIterator<TResult>(MessageCode messageCode,
             Func<RiakResult<TResult>, bool> repeatRead)
             where TResult : class, new()
         {
-            var writeResult = PbcWrite(messageCode).Result;
+            var writeResult = await PbcWrite(messageCode);
             if(writeResult.IsSuccess)
             {
                 return PbcStreamReadIterator(repeatRead);
@@ -402,12 +402,17 @@ namespace CorrugatedIron.Comms
         public void Dispose()
         {
             _socket.Dispose();
-            Disconnect();
+            var task = Disconnect();
+            var awaitable = task.ConfigureAwait(false);
+            awaitable.GetAwaiter().GetResult();
         }
 
-        public void Disconnect()
+        public async Task Disconnect()
         {
-            _socket.Disconnect();
+            if (_socket != null)
+            {
+                await _socket.Disconnect();
+            }
         }
     }
 }

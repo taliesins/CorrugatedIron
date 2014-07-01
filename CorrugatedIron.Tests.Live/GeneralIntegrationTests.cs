@@ -42,7 +42,7 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
         [Test]
         public void ServerInfoIsSuccessfullyExtractedAsynchronously()
         {
-            var result = Client.Async.GetServerInfo().Result;
+            var result = Client.Async.GetServerInfo().ConfigureAwait(false).GetAwaiter().GetResult();
             result.IsSuccess.ShouldBeTrue(result.ErrorMessage);
         }
 
@@ -575,7 +575,7 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
             var keyList = Client.ListKeys(bucket);
             keyList.Value.Count().ShouldEqual(10);
 
-            var result = Client.Async.DeleteBucket(bucket).Result.ToEnumerable();
+            var result = Client.Async.DeleteBucket(bucket).ConfigureAwait(false).GetAwaiter().GetResult().ToEnumerable();
 
             result.ForEach(x => x.IsSuccess.ShouldBeTrue(x.ErrorMessage));
             
@@ -635,7 +635,7 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
                 r.IsSuccess.ShouldBeTrue();
             }
 
-            var result = Client.Async.ListKeys(bucket).Result;
+            var result = Client.Async.ListKeys(bucket).ConfigureAwait(false).GetAwaiter().GetResult();
 
             result.IsSuccess.ShouldBeTrue();
             result.Value.ShouldNotBeNull();

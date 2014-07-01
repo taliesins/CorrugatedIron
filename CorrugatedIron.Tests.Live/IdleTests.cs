@@ -36,7 +36,7 @@ namespace CorrugatedIron.Tests.Live.IdleTests
         {
             Func<IRiakConnection, Task<RiakResult<IRiakConnection>>> runFun = (x)=>Task.FromResult(RiakResult<IRiakConnection>.Success(x));
 
-            var result = Cluster.UseConnection(runFun, 1).Result;
+            var result = Cluster.UseConnection(runFun, 1).ConfigureAwait(false).GetAwaiter().GetResult();
 
             //System.Threading.Thread.Sleep(ClusterConfig.RiakNodes[0].IdleTimeout + 1000);
             return result.Value;
