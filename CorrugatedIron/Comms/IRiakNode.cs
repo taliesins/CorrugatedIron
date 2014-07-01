@@ -9,9 +9,5 @@ namespace CorrugatedIron.Comms
         Task<RiakResult> UseConnection(Func<IRiakConnection, Task<RiakResult>> useFun);
         Task<RiakResult<TResult>> UseConnection<TResult>(Func<IRiakConnection, Task<RiakResult<TResult>>> useFun);
         Task<RiakResult<IEnumerable<TResult>>> UseConnection<TResult>(Func<IRiakConnection, Task<RiakResult<IEnumerable<TResult>>>> useFun);
-
-        Task<RiakResult> UseConnection(Func<IRiakConnection, Action, Task<RiakResult>> useFun);
-        Task<RiakResult<TResult>> UseConnection<TResult>(Func<IRiakConnection, Action, Task<RiakResult<TResult>>> useFun);
-        Task<RiakResult<IEnumerable<TResult>>> UseConnection<TResult>(Func<IRiakConnection, Action, Task<RiakResult<IEnumerable<TResult>>>> useFun);
     }
 }

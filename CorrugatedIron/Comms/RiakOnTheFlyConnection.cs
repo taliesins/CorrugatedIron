@@ -37,16 +37,33 @@ namespace CorrugatedIron.Comms
             _bufferManager = new BlockingBufferManager(nodeConfig.BufferSize, bufferPoolSize);
         }
 
-        public Tuple<bool, Task<TResult>> Consume<TResult>(Func<IRiakConnection, Action, Task<TResult>> consumer)
+        public Tuple<bool, Task<TResult>> Consume<TResult>(Func<IRiakConnection, Task<TResult>> consumer)
         {
-            if (_disposing) return Tuple.Create<bool, Task<TResult>>(false, null);
+            if (_disposing)
+            {
+                return Tuple.Create<bool, Task<TResult>>(false, null);
+            }
 
             IRiakConnection conn = null;
 
             try
             {
                 conn = _connFactory.CreateConnection(_nodeConfig, _pool, _bufferManager);
-                var result = consumer(conn, conn.Dispose);
+
+                Func<Task<TResult>, object, TResult> cleanup = (task, state) =>
+                {
+                    var riakConnection = state as IRiakConnection;
+                    if (riakConnection != null)
+                    {
+                        riakConnection.Dispose();
+                    }
+
+                    return task.Result;
+                };
+
+                var result = consumer(conn)
+                    .ContinueWith(cleanup, conn);
+
                 return Tuple.Create(true, result);
             }
             catch(Exception)

@@ -66,18 +66,18 @@ namespace CorrugatedIron
         }
 
         private Task<RiakResult<IObservable<RiakResult>>> UseConnection<TResult>(
-            Func<IRiakConnection, Action, Task<RiakResult<IObservable<RiakResult>>>> op)
+            Func<IRiakConnection, Task<RiakResult<IObservable<RiakResult>>>> op)
         {
             return _batchConnection != null
-                ? op(_batchConnection, () => { })
+                ? op(_batchConnection)
                 : _endPoint.UseConnection(op, RetryCount);
         }
 
         private Task<RiakResult<IObservable<RiakResult<TResult>>>> UseConnection<TResult>(
-            Func<IRiakConnection, Action, Task<RiakResult<IObservable<RiakResult<TResult>>>>> op)
+            Func<IRiakConnection, Task<RiakResult<IObservable<RiakResult<TResult>>>>> op)
         {
             return _batchConnection != null
-                ? op(_batchConnection, () => { })
+                ? op(_batchConnection)
                 : _endPoint.UseConnection(op, RetryCount);
         }
 
@@ -494,7 +494,7 @@ namespace CorrugatedIron
         public async Task<RiakResult<RiakMapReduceResult>> MapReduce(RiakMapReduceQuery query)
         {
             var request = query.ToMessage();
-            var response = await UseConnection((conn, onFinish) => conn.PbcWriteRead<RpbMapRedReq, RpbMapRedResp>(request, r => r.IsSuccess && !r.Value.done, onFinish));
+            var response = await UseConnection((conn) => conn.PbcWriteRead<RpbMapRedReq, RpbMapRedResp>(request, r => r.IsSuccess && !r.Value.done));
 
             if (response.IsSuccess)
             {
@@ -507,7 +507,7 @@ namespace CorrugatedIron
         public async Task<RiakResult<RiakStreamedMapReduceResult>> StreamMapReduce(RiakMapReduceQuery query)
         {
             var request = query.ToMessage();
-            var response = await UseConnection((conn, onFinish) => conn.PbcWriteStreamRead<RpbMapRedReq, RpbMapRedResp>(request, r => r.IsSuccess && !r.Value.done, onFinish));
+            var response = await UseConnection((conn) => conn.PbcWriteStreamRead<RpbMapRedReq, RpbMapRedResp>(request, r => r.IsSuccess && !r.Value.done));
 
             if (response.IsSuccess)
             {
@@ -519,7 +519,7 @@ namespace CorrugatedIron
         public async Task<RiakResult<IObservable<string>>> StreamListBuckets()
         {
             var lbReq = new RpbListBucketsReq { stream = true };
-            var result = await UseConnection((conn, onFinish) => conn.PbcWriteStreamRead<RpbListBucketsReq, RpbListBucketsResp>(lbReq, lbr => lbr.IsSuccess && !lbr.Value.done, onFinish));
+            var result = await UseConnection((conn) => conn.PbcWriteStreamRead<RpbListBucketsReq, RpbListBucketsResp>(lbReq, lbr => lbr.IsSuccess && !lbr.Value.done));
 
             if (result.IsSuccess)
             {
@@ -580,7 +580,7 @@ namespace CorrugatedIron
             Console.WriteLine(ListKeysWarning);
 
             var lkReq = new RpbListKeysReq { bucket = bucket.ToRiakString() };
-            var result = await UseConnection((conn, onFinish) => conn.PbcWriteStreamRead<RpbListKeysReq, RpbListKeysResp>(lkReq, lkr => lkr.IsSuccess && !lkr.Value.done, onFinish));
+            var result = await UseConnection((conn) => conn.PbcWriteStreamRead<RpbListKeysReq, RpbListKeysResp>(lkReq, lkr => lkr.IsSuccess && !lkr.Value.done));
 
             if (result.IsSuccess)
             {
@@ -811,7 +811,7 @@ namespace CorrugatedIron
             options = options ?? new RiakIndexGetOptions();
             options.Populate(message);
 
-            var result = await UseConnection((conn, onFinish) => conn.PbcWriteStreamRead<RpbIndexReq, RpbIndexResp>(message, lbr => lbr.IsSuccess && !lbr.Value.done, onFinish));
+            var result = await UseConnection((conn) => conn.PbcWriteStreamRead<RpbIndexReq, RpbIndexResp>(message, lbr => lbr.IsSuccess && !lbr.Value.done));
 
             if (result.IsSuccess)
             {
@@ -838,8 +838,7 @@ namespace CorrugatedIron
             options = options ?? new RiakIndexGetOptions();
             options.Populate(message);
 
-            var result = await UseConnection((conn, onFinish) =>
-                                              conn.PbcWriteStreamRead<RpbIndexReq, RpbIndexResp>(message, lbr => lbr.IsSuccess && !lbr.Value.done, onFinish));
+            var result = await UseConnection((conn) => conn.PbcWriteStreamRead<RpbIndexReq, RpbIndexResp>(message, lbr => lbr.IsSuccess && !lbr.Value.done));
 
             if (result.IsSuccess)
             {
@@ -935,7 +934,7 @@ namespace CorrugatedIron
         {
             var funResult = default(T);
 
-            Func<IRiakConnection, Action, Task<RiakResult<IObservable<RiakResult<object>>>>> helperBatchFun = (conn, onFinish) =>
+            Func<IRiakConnection, Task<RiakResult<IObservable<RiakResult<object>>>>> helperBatchFun = (conn) =>
             {
                 try
                 {
@@ -945,10 +944,6 @@ namespace CorrugatedIron
                 catch (Exception ex)
                 {
                     return Task.FromResult(RiakResult<IObservable<RiakResult<object>>>.Error(ResultCode.BatchException, "{0}\n{1}".Fmt(ex.Message, ex.StackTrace), true));
-                }
-                finally
-                {
-                    onFinish();
                 }
             };
 

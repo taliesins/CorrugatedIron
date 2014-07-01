@@ -60,30 +60,6 @@ namespace CorrugatedIron
         protected abstract Task<RiakResult<IObservable<T>>> UseConnection<T>(Func<IRiakConnection, Task<RiakResult<IObservable<T>>>> useFun, 
             Func<ResultCode, string, bool, RiakResult<IObservable<T>>> onError, int retryAttempts);
         
-        public Task<RiakResult> UseConnection(Func<IRiakConnection, Action, Task<RiakResult>> useFun, int retryAttempts)
-        {
-            return UseConnection(useFun, RiakResult.Error, retryAttempts);
-        }
-
-        public Task<RiakResult<TResult>> UseConnection<TResult>(Func<IRiakConnection, Action, Task<RiakResult<TResult>>> useFun, int retryAttempts)
-        {
-            return UseConnection(useFun, RiakResult<TResult>.Error, retryAttempts);
-        }
-
-        public Task<RiakResult<IObservable<TResult>>> UseConnection<TResult>(Func<IRiakConnection, Action, Task<RiakResult<IObservable<TResult>>>> useFun, int retryAttempts)
-        {
-            return UseConnection(useFun, RiakResult<IObservable<TResult>>.Error, retryAttempts);
-        }
-
-        protected abstract Task<RiakResult> UseConnection(Func<IRiakConnection, Action, Task<RiakResult>> useFun,
-            Func<ResultCode, string, bool, RiakResult> onError, int retryAttempts);
-
-        protected abstract Task<RiakResult<T>> UseConnection<T>(Func<IRiakConnection, Action, Task<RiakResult<T>>> useFun,
-            Func<ResultCode, string, bool, RiakResult<T>> onError, int retryAttempts);
-
-        protected abstract Task<RiakResult<IObservable<T>>> UseConnection<T>(Func<IRiakConnection, Action, Task<RiakResult<IObservable<T>>>> useFun,
-            Func<ResultCode, string, bool, RiakResult<IObservable<T>>> onError, int retryAttempts);
-
         public abstract void Dispose();
     }
 }

@@ -64,12 +64,15 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
         [Test]
         public void GetsWithBucketAndKeyReturnObjectsThatAreMarkedAsNotChanged()
         {
+            var bucketName = "identity_configuration";
+            var key = "RiakMembershipProviderTests";
+
             var doc = new RiakObject(TestBucket, TestKey, TestJson, RiakConstants.ContentTypes.ApplicationJson);
             var writeResult = Client.Put(doc);
             writeResult.IsSuccess.ShouldBeTrue();
             writeResult.Value.ShouldNotBeNull();
 
-            var readResult = Client.Get(TestBucket, TestKey);
+            var readResult = Client.Get(bucketName, key);
             readResult.IsSuccess.ShouldBeTrue();
             readResult.Value.ShouldNotBeNull();
             readResult.Value.HasChanged.ShouldBeFalse();

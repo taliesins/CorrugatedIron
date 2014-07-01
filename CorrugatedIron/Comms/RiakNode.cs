@@ -40,58 +40,7 @@ namespace CorrugatedIron.Comms
             }
         }
 
-        public Task<RiakResult> UseConnection(Func<IRiakConnection, Task<RiakResult>> useFun)
-        {
-            Func<IRiakConnection, Action, Task<RiakResult>> delayedFun = async (connection, onFinish) =>
-            {
-                try
-                {
-                    return await useFun(connection);
-                }
-                finally
-                {
-                    onFinish();
-                }
-            };
-
-            return UseConnection(delayedFun);
-        }
-
-        public Task<RiakResult<TResult>> UseConnection<TResult>(Func<IRiakConnection, Task<RiakResult<TResult>>> useFun)
-        {
-            Func<IRiakConnection, Action, Task<RiakResult<TResult>>> delayedFun = async (connection, onFinish) =>
-            {
-                try
-                {
-                    return await useFun(connection);
-                }
-                finally 
-                {
-                    onFinish();
-                }
-            };
-
-            return UseConnection(delayedFun);
-        }
-
-        public Task<RiakResult<IEnumerable<TResult>>> UseConnection<TResult>(Func<IRiakConnection, Task<RiakResult<IEnumerable<TResult>>>> useFun)
-        {
-            Func<IRiakConnection, Action, Task<RiakResult<IEnumerable<TResult>>>> delayedFun = async (connection, onFinish) =>
-            {
-                try
-                {
-                    return await useFun(connection);
-                }
-                finally
-                {
-                    onFinish();
-                }
-            };
-
-            return UseConnection(delayedFun);
-        }
-
-        public async Task<RiakResult> UseConnection(Func<IRiakConnection, Action, Task<RiakResult>> useFun)
+        public async Task<RiakResult> UseConnection(Func<IRiakConnection, Task<RiakResult>> useFun)
         {
             if (_disposing) return RiakResult.Error(ResultCode.ShuttingDown, "Connection is shutting down", true);
 
@@ -103,7 +52,7 @@ namespace CorrugatedIron.Comms
             return RiakResult.Error(ResultCode.NoConnections, "Unable to acquire connection", true);
         }
 
-        public async Task<RiakResult<TResult>> UseConnection<TResult>(Func<IRiakConnection, Action, Task<RiakResult<TResult>>> useFun)
+        public async Task<RiakResult<TResult>> UseConnection<TResult>(Func<IRiakConnection, Task<RiakResult<TResult>>> useFun)
         {
             if (_disposing) return RiakResult<TResult>.Error(ResultCode.ShuttingDown, "Connection is shutting down", true);
 
@@ -115,7 +64,7 @@ namespace CorrugatedIron.Comms
             return RiakResult<TResult>.Error(ResultCode.NoConnections, "Unable to acquire connection", true);
         }
 
-        public async Task<RiakResult<IEnumerable<TResult>>> UseConnection<TResult>(Func<IRiakConnection, Action, Task<RiakResult<IEnumerable<TResult>>>> useFun)
+        public async Task<RiakResult<IEnumerable<TResult>>> UseConnection<TResult>(Func<IRiakConnection, Task<RiakResult<IEnumerable<TResult>>>> useFun)
         {
             if (_disposing) return RiakResult<IEnumerable<TResult>>.Error(ResultCode.ShuttingDown, "Connection is shutting down", true);
 

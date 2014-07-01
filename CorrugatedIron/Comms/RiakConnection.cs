@@ -97,10 +97,10 @@ namespace CorrugatedIron.Comms
             }
         }
 
-        public async Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcRepeatRead<TResult>(Func<RiakResult<TResult>, bool> repeatRead, Action onFinish)
+        public async Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcRepeatRead<TResult>(Func<RiakResult<TResult>, bool> repeatRead)
             where TResult : class, new()
         {
-            var pbcStreamReadIterator = PbcStreamReadIterator(repeatRead, onFinish);
+            var pbcStreamReadIterator = PbcStreamReadIterator(repeatRead);
             return RiakResult<IObservable<RiakResult<TResult>>>.Success(pbcStreamReadIterator);
         }
 
@@ -194,46 +194,40 @@ namespace CorrugatedIron.Comms
         }
 
         public async Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcWriteRead<TRequest, TResult>(TRequest request,
-            Func<RiakResult<TResult>, bool> repeatRead, Action onFinish)
+            Func<RiakResult<TResult>, bool> repeatRead)
             where TRequest : class
             where TResult : class, new()
         {
             var writeResult = await PbcWrite(request);
             if(writeResult.IsSuccess)
             {
-                return await PbcRepeatRead(repeatRead, onFinish);
+                return await PbcRepeatRead(repeatRead);
             }
-            if (onFinish != null)
-            {
-                onFinish();
-            }
+
             return RiakResult<IObservable<RiakResult<TResult>>>.Error(writeResult.ResultCode, writeResult.ErrorMessage, writeResult.NodeOffline);
         }
 
         public async Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcWriteRead<TResult>(MessageCode messageCode,
-            Func<RiakResult<TResult>, bool> repeatRead, Action onFinish)
+            Func<RiakResult<TResult>, bool> repeatRead)
             where TResult : class, new()
         {
             var writeResult = await PbcWrite(messageCode);
             if(writeResult.IsSuccess)
             {
-                return await PbcRepeatRead(repeatRead, onFinish);
+                return await PbcRepeatRead(repeatRead);
             }
-            if (onFinish != null)
-            {
-                onFinish();
-            }
+
             return RiakResult<IObservable<RiakResult<TResult>>>.Error(writeResult.ResultCode, writeResult.ErrorMessage, writeResult.NodeOffline);
         }
 
-        public async Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcStreamRead<TResult>(Func<RiakResult<TResult>, bool> repeatRead, Action onFinish)
+        public async Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcStreamRead<TResult>(Func<RiakResult<TResult>, bool> repeatRead)
             where TResult : class, new()
         {
-            var streamer = PbcStreamReadIterator(repeatRead, onFinish);
+            var streamer = PbcStreamReadIterator(repeatRead);
             return RiakResult<IObservable<RiakResult<TResult>>>.Success(streamer);
         }
 
-        private IObservable<RiakResult<TResult>> PbcStreamReadIterator<TResult>(Func<RiakResult<TResult>, bool> repeatRead, Action onFinish)
+        private IObservable<RiakResult<TResult>> PbcStreamReadIterator<TResult>(Func<RiakResult<TResult>, bool> repeatRead)
             where TResult : class, new()
         {
             var pbcStreamReadIterator = Observable.Create<RiakResult<TResult>>(async observer =>
@@ -260,10 +254,6 @@ namespace CorrugatedIron.Comms
   
                 } while (repeatRead(result));
 
-                if (onFinish != null)
-                {
-                    onFinish();
-                }
                 observer.OnCompleted();
             });
 
@@ -272,51 +262,43 @@ namespace CorrugatedIron.Comms
         }
 
         public async Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcWriteStreamRead<TRequest, TResult>(TRequest request,
-            Func<RiakResult<TResult>, bool> repeatRead, Action onFinish)
+            Func<RiakResult<TResult>, bool> repeatRead)
             where TRequest : class
             where TResult : class, new()
         {
-            var streamer = PbcWriteStreamReadIterator(request, repeatRead, onFinish);
+            var streamer = PbcWriteStreamReadIterator(request, repeatRead);
             return RiakResult<IObservable<RiakResult<TResult>>>.Success(streamer);
         }
 
         public async Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcWriteStreamRead<TResult>(MessageCode messageCode,
-            Func<RiakResult<TResult>, bool> repeatRead, Action onFinish)
+            Func<RiakResult<TResult>, bool> repeatRead)
             where TResult : class, new()
         {
-            var streamer = PbcWriteStreamReadIterator(messageCode, repeatRead, onFinish);
+            var streamer = PbcWriteStreamReadIterator(messageCode, repeatRead);
             return RiakResult<IObservable<RiakResult<TResult>>>.Success(streamer);
         }
 
         private IObservable<RiakResult<TResult>> PbcWriteStreamReadIterator<TRequest, TResult>(TRequest request,
-            Func<RiakResult<TResult>, bool> repeatRead, Action onFinish)
+            Func<RiakResult<TResult>, bool> repeatRead)
             where TRequest : class
             where TResult : class, new()
         {
             var writeResult = PbcWrite(request).Result;
             if(writeResult.IsSuccess)
             {
-                return PbcStreamReadIterator(repeatRead, onFinish);
-            }
-            if (onFinish != null)
-            {
-                onFinish();
+                return PbcStreamReadIterator(repeatRead);
             }
             return new[] { RiakResult<TResult>.Error(writeResult.ResultCode, writeResult.ErrorMessage, writeResult.NodeOffline) }.ToObservable();
         }
 
         private IObservable<RiakResult<TResult>> PbcWriteStreamReadIterator<TResult>(MessageCode messageCode,
-            Func<RiakResult<TResult>, bool> repeatRead, Action onFinish)
+            Func<RiakResult<TResult>, bool> repeatRead)
             where TResult : class, new()
         {
             var writeResult = PbcWrite(messageCode).Result;
             if(writeResult.IsSuccess)
             {
-                return PbcStreamReadIterator(repeatRead, onFinish);
-            }
-            if (onFinish != null)
-            {
-                onFinish();
+                return PbcStreamReadIterator(repeatRead);
             }
             return new[] { RiakResult<TResult>.Error(writeResult.ResultCode, writeResult.ErrorMessage, writeResult.NodeOffline) }.ToObservable();
         }

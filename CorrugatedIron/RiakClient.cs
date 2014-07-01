@@ -603,7 +603,7 @@ namespace CorrugatedIron
         /// </exception>
         public void Batch(Action<IRiakBatchClient> batchAction)
         {
-            Func<IRiakConnection, Action, Task<RiakResult<RiakResult>>> helperBatchFun = (conn, onFinish) =>
+            Func<IRiakConnection, Task<RiakResult<RiakResult>>> helperBatchFun = (conn) =>
             {
                 try
                 {
@@ -613,10 +613,6 @@ namespace CorrugatedIron
                 catch (Exception ex)
                 {
                     return Task.FromResult(RiakResult<RiakResult>.Error(ResultCode.BatchException, "{0}\n{1}".Fmt(ex.Message, ex.StackTrace), true));
-                }
-                finally
-                {
-                    onFinish();
                 }
             };
 
@@ -632,7 +628,7 @@ namespace CorrugatedIron
         {
             var funResult = default(T);
 
-            Func<IRiakConnection, Action, Task<RiakResult<RiakResult<object>>>> helperBatchFun = (conn, onFinish) =>
+            Func<IRiakConnection, Task<RiakResult<RiakResult<object>>>> helperBatchFun = (conn) =>
             {
                 try
                 {
@@ -642,10 +638,6 @@ namespace CorrugatedIron
                 catch(Exception ex)
                 {
                     return Task.FromResult(RiakResult<RiakResult<object>>.Error(ResultCode.BatchException, "{0}\n{1}".Fmt(ex.Message, ex.StackTrace), true));
-                }
-                finally
-                {
-                    onFinish();
                 }
             };
 
@@ -663,7 +655,7 @@ namespace CorrugatedIron
         {
             var funResult = default(IEnumerable<T>);
 
-            Func<IRiakConnection, Action, Task<RiakResult<IEnumerable<RiakResult<object>>>>> helperBatchFun = (conn, onFinish) =>
+            Func<IRiakConnection, Task<RiakResult<IEnumerable<RiakResult<object>>>>> helperBatchFun = (conn) =>
             {
                 try
                 {
@@ -673,10 +665,6 @@ namespace CorrugatedIron
                 catch (Exception ex)
                 {
                     return Task.FromResult(RiakResult<IEnumerable<RiakResult<object>>>.Error(ResultCode.BatchException, "{0}\n{1}".Fmt(ex.Message, ex.StackTrace), true));
-                }
-                finally
-                {
-                    onFinish();
                 }
             };
 

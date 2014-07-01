@@ -32,26 +32,32 @@ namespace CorrugatedIron.Comms
     {
         private const int SocketConnectAttempts = 3;
         private readonly DnsEndPoint _endPoint;
-        private readonly int _receiveTimeout;
-        private readonly int _sendTimeout;
         private readonly SocketAwaitablePool _socketAwaitablePool;
         private readonly BlockingBufferManager _blockingBufferManager;
-
         private static readonly Dictionary<MessageCode, Type> MessageCodeToTypeMap;
         private static readonly Dictionary<Type, MessageCode> TypeToMessageCodeMap;
 
-        private Socket _socket;
+        private Lazy<Socket> _socket;
 
         public RiakPbcSocket(string server, int port, int receiveTimeout, int sendTimeout, SocketAwaitablePool socketAwaitablePool, BlockingBufferManager blockingBufferManager)
         {
             _endPoint = new DnsEndPoint(server, port);
-            _receiveTimeout = receiveTimeout;
-            _sendTimeout = sendTimeout;
             _socketAwaitablePool = socketAwaitablePool;
             _blockingBufferManager = blockingBufferManager;
+            _socket = new Lazy<Socket>(() =>
+            {
+                var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+                {
+                    NoDelay = true,
+                    ReceiveTimeout = receiveTimeout,
+                    SendTimeout = sendTimeout
+                };
+
+                return socket;
+            });
         }
 
-        private async Task ConnectAsync(Socket socket, EndPoint endPoint)
+        private async Task<Lazy<Socket>> ConnectAsync(Lazy<Socket> socket, EndPoint endPoint)
         {
             var awaitable = _socketAwaitablePool.Take();
             try
@@ -61,7 +67,8 @@ namespace CorrugatedIron.Comms
                 var result = SocketError.Fault;
                 for (var i = 0; i < SocketConnectAttempts; i++)
                 {
-                    result = await socket.ConnectAsync(awaitable);
+                    result = await socket.Value.ConnectAsync(awaitable);
+
                     if (result == SocketError.Success)
                     {
                         break;
@@ -70,7 +77,9 @@ namespace CorrugatedIron.Comms
 
                 if (result != SocketError.Success)
                 {
-                    throw new RiakException("Unable to connect to remote server: {0}:{1} error code {2}".Fmt(_endPoint.Host, _endPoint.Port, result));
+                    throw new RiakException(
+                        "Unable to connect to remote server: {0}:{1} error code {2}".Fmt(_endPoint.Host, _endPoint.Port,
+                            result));
                 }
             }
             finally
@@ -78,6 +87,8 @@ namespace CorrugatedIron.Comms
                 awaitable.Clear();
                 _socketAwaitablePool.Add(awaitable);
             }
+
+            return socket;
         }
 
         private async Task ReceiveAsync(Socket socket, ArraySegment<byte> buffer)
@@ -165,7 +176,7 @@ namespace CorrugatedIron.Comms
         {
             get
             {
-                return _socket != null && _socket.Connected;
+                return _socket.IsValueCreated && _socket.Value.Connected;
             }
         }
 
@@ -214,23 +225,14 @@ namespace CorrugatedIron.Comms
 
         private async Task<Socket> GetConnectedSocket()
         {
-            if (_socket != null)
+            if (_socket.Value.Connected)
             {
-                return _socket;
+                return _socket.Value;
             }
 
-            var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
-            {
-                NoDelay = true,
-                ReceiveTimeout = _receiveTimeout,
-                SendTimeout = _sendTimeout
-            };
+            var socket = await ConnectAsync(_socket, _endPoint);
 
-            await ConnectAsync(socket, _endPoint);
-
-            _socket = socket;
-
-            return _socket;
+            return _socket.Value;
         }
 
         public async Task Write(MessageCode messageCode)
@@ -447,12 +449,12 @@ namespace CorrugatedIron.Comms
 
         public async Task Disconnect()
         {
-            if (_socket == null) return;
+            if (!_socket.IsValueCreated) return;
 
             var awaitable = _socketAwaitablePool.Take();
             try
             {
-                await _socket.DisonnectAsync(awaitable);
+                await _socket.Value.DisonnectAsync(awaitable);
             }
             finally
             {
@@ -460,7 +462,7 @@ namespace CorrugatedIron.Comms
                 _socketAwaitablePool.Add(awaitable);
             }
 
-            _socket.Dispose();
+            _socket.Value.Dispose();
             _socket = null;
         }
 

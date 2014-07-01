@@ -34,26 +34,26 @@ namespace CorrugatedIron.Comms
 
         Task<RiakResult> PbcWriteRead(MessageCode messageCode, MessageCode expectedMessageCode);
 
-        Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcRepeatRead<TResult>(Func<RiakResult<TResult>, bool> repeatRead, Action onFinish)
+        Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcRepeatRead<TResult>(Func<RiakResult<TResult>, bool> repeatRead)
             where TResult : class, new();
 
-        Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcWriteRead<TResult>(MessageCode messageCode, Func<RiakResult<TResult>, bool> repeatRead, Action onFinish = null)
+        Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcWriteRead<TResult>(MessageCode messageCode, Func<RiakResult<TResult>, bool> repeatRead)
             where TResult : class, new();
 
-        Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcWriteRead<TRequest, TResult>(TRequest request, Func<RiakResult<TResult>, bool> repeatRead, Action onFinish = null)
+        Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcWriteRead<TRequest, TResult>(TRequest request, Func<RiakResult<TResult>, bool> repeatRead)
             where TRequest : class
             where TResult : class, new();
 
-        Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcStreamRead<TResult>(Func<RiakResult<TResult>, bool> repeatRead, Action onFinish)
+        Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcStreamRead<TResult>(Func<RiakResult<TResult>, bool> repeatRead)
             where TResult : class, new();
 
         Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcWriteStreamRead<TRequest, TResult>(TRequest request,
-            Func<RiakResult<TResult>, bool> repeatRead, Action onFinish)
+            Func<RiakResult<TResult>, bool> repeatRead)
             where TRequest : class
             where TResult : class, new();
 
         Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcWriteStreamRead<TResult>(MessageCode messageCode,
-            Func<RiakResult<TResult>, bool> repeatRead, Action onFinish)
+            Func<RiakResult<TResult>, bool> repeatRead)
             where TResult : class, new();
 
         // REST interface

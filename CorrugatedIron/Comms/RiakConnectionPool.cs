@@ -47,7 +47,7 @@ namespace CorrugatedIron.Comms
             _resources = new BlockingCollection<IRiakConnection>(new ConcurrentQueue<IRiakConnection>(_allResources));
         }
 
-        public Tuple<bool, Task<TResult>> Consume<TResult>(Func<IRiakConnection, Action, Task<TResult>> consumer)
+        public Tuple<bool, Task<TResult>> Consume<TResult>(Func<IRiakConnection, Task<TResult>> consumer)
         {
             if (_disposing) return Tuple.Create<bool, Task<TResult>>(false, null);
 
@@ -56,14 +56,18 @@ namespace CorrugatedIron.Comms
             {
                 if (_resources.TryTake(out instance, -1))
                 {
-                    Action cleanup = () =>
+                    Func<Task<TResult>, TResult> cleanup = (task) =>
                     {
                         var i = instance;
                         instance = null;
                         _resources.Add(i);
+
+                        return task.Result;
                     };
 
-                    var result = consumer(instance, cleanup);
+                    var result = consumer(instance)
+                        .ContinueWith(cleanup);
+
                     return Tuple.Create(true, result);
                 }
             }
