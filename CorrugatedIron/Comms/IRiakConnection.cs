@@ -5,58 +5,54 @@ using CorrugatedIron.Models.Rest;
 
 namespace CorrugatedIron.Comms
 {
-    public interface IRiakConnection : IDisposable
+    public interface IRiakConnection
     {
-        bool IsIdle { get; }
-
-        Task Disconnect();
-
         // PBC interface
-        Task<RiakResult<TResult>> PbcRead<TResult>()
+        Task<TResult> PbcRead<TResult>(IRiakEndPoint endPoint)
             where TResult : class, new();
 
-        Task<RiakResult> PbcRead(MessageCode expectedMessageCode);
+        Task PbcRead(IRiakEndPoint endPoint, MessageCode expectedMessageCode);
 
-        Task<RiakResult> PbcWrite<TRequest>(TRequest request)
+        Task PbcWrite<TRequest>(IRiakEndPoint endPoint, TRequest request)
             where TRequest : class;
 
-        Task<RiakResult> PbcWrite(MessageCode messageCode);
+        Task PbcWrite(IRiakEndPoint endPoint, MessageCode messageCode);
 
-        Task<RiakResult<TResult>> PbcWriteRead<TRequest, TResult>(TRequest request)
+        Task<TResult> PbcWriteRead<TRequest, TResult>(IRiakEndPoint endPoint, TRequest request)
             where TRequest : class
             where TResult : class, new();
 
-        Task<RiakResult<TResult>> PbcWriteRead<TResult>(MessageCode messageCode)
+        Task<TResult> PbcWriteRead<TResult>(IRiakEndPoint endPoint, MessageCode messageCode)
             where TResult : class, new();
 
-        Task<RiakResult> PbcWriteRead<TRequest>(TRequest request, MessageCode expectedMessageCode)
+        Task PbcWriteRead<TRequest>(IRiakEndPoint endPoint, TRequest request, MessageCode expectedMessageCode)
             where TRequest : class;
 
-        Task<RiakResult> PbcWriteRead(MessageCode messageCode, MessageCode expectedMessageCode);
+        Task PbcWriteRead(IRiakEndPoint endPoint, MessageCode messageCode, MessageCode expectedMessageCode);
 
-        Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcRepeatRead<TResult>(Func<RiakResult<TResult>, bool> repeatRead)
+        IObservable<TResult> PbcRepeatRead<TResult>(IRiakEndPoint endPoint, Func<TResult, bool> repeatRead)
             where TResult : class, new();
 
-        Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcWriteRead<TResult>(MessageCode messageCode, Func<RiakResult<TResult>, bool> repeatRead)
+        IObservable<TResult> PbcWriteRead<TResult>(IRiakEndPoint endPoint, MessageCode messageCode, Func<TResult, bool> repeatRead)
             where TResult : class, new();
 
-        Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcWriteRead<TRequest, TResult>(TRequest request, Func<RiakResult<TResult>, bool> repeatRead)
+        IObservable<TResult> PbcWriteRead<TRequest, TResult>(IRiakEndPoint endPoint, TRequest request, Func<TResult, bool> repeatRead)
             where TRequest : class
             where TResult : class, new();
 
-        Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcStreamRead<TResult>(Func<RiakResult<TResult>, bool> repeatRead)
+        IObservable<TResult> PbcStreamRead<TResult>(IRiakEndPoint endPoint, Func<TResult, bool> repeatRead)
             where TResult : class, new();
 
-        Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcWriteStreamRead<TRequest, TResult>(TRequest request,
-            Func<RiakResult<TResult>, bool> repeatRead)
+        IObservable<TResult> PbcWriteStreamRead<TRequest, TResult>(IRiakEndPoint endPoint, TRequest request,
+            Func<TResult, bool> repeatRead)
             where TRequest : class
             where TResult : class, new();
 
-        Task<RiakResult<IObservable<RiakResult<TResult>>>> PbcWriteStreamRead<TResult>(MessageCode messageCode,
-            Func<RiakResult<TResult>, bool> repeatRead)
+        IObservable<TResult> PbcWriteStreamRead<TResult>(IRiakEndPoint endPoint, MessageCode messageCode,
+            Func<TResult, bool> repeatRead)
             where TResult : class, new();
 
         // REST interface
-        Task<RiakResult<RiakRestResponse>> RestRequest(RiakRestRequest request);
+        Task<RiakRestResponse> RestRequest(IRiakEndPoint endPoint, RiakRestRequest request);
     }
 }

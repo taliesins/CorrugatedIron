@@ -87,7 +87,6 @@
       <Link>Properties\VersionInfo.cs</Link>
     </Compile>
     <Compile Include="Comms\IRiakConnection.cs" />
-    <Compile Include="Comms\IRiakConnectionFactory.cs" />
     <Compile Include="Comms\IRiakConnectionManager.cs" />
     <Compile Include="Comms\IRiakNode.cs" />
     <Compile Include="Comms\LoadBalancing\ILoadBalancingStrategy.cs" />
@@ -110,8 +109,13 @@
     <Compile Include="Containers\ConcurrentEnumerator.cs" />
     <Compile Include="Comms\RiakConnectionPool.cs" />
     <Compile Include="Containers\Either.cs" />
+    <Compile Include="IRiakAsyncBatchClient.cs" />
+    <Compile Include="Models\Pong.cs" />
+    <Compile Include="RiakBatch.cs" />
+    <Compile Include="RiakEndPointContext.cs" />
     <Compile Include="Exceptions\RiakInvalidDataException.cs" />
     <Compile Include="Exceptions\RiakException.cs" />
+    <Compile Include="IRiakEndPointContext.cs" />
     <Compile Include="IRiakAsyncClient.cs" />
     <Compile Include="IRiakBatchClient.cs" />
     <Compile Include="IRiakClient.cs" />
@@ -266,14 +270,11 @@
     <Compile Include="RiakAsyncClient.cs" />
     <Compile Include="RiakClient.cs" />
     <Compile Include="Comms\RiakConnection.cs" />
-    <Compile Include="Comms\RiakConnectionFactory.cs" />
     <Compile Include="RiakCluster.cs" />
     <Compile Include="Comms\RiakNode.cs" />
     <Compile Include="Models\MapReduce\RiakMapReduceResult.cs" />
     <Compile Include="RiakClusterManager.cs" />
-    <Compile Include="RiakEndPoint.cs" />
     <Compile Include="RiakExternalLoadBalancer.cs" />
-    <Compile Include="RiakResult.cs" />
     <Compile Include="Config\RiakClusterConfiguration.cs" />
     <Compile Include="Config\RiakNodeConfiguration.cs" />
     <Compile Include="Config\RiakNodeConfigurationCollection.cs" />

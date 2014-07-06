@@ -61,7 +61,7 @@ namespace CorrugatedIron.Tests.Live.LoadTests
                 keys.Add(key);
 
                 var result = Client.Put(doc, new RiakPutOptions { ReturnBody = true });
-                result.IsSuccess.ShouldBeTrue();
+                result.ShouldNotBeNull();
             }
 
             var input = new RiakBucketKeyInput();
@@ -73,7 +73,7 @@ namespace CorrugatedIron.Tests.Live.LoadTests
                 .ReduceJs(r => r.Name(@"Riak.reduceSum").Keep(true));
             query.Compile();
 
-            var results = new List<RiakResult<RiakMapReduceResult>>[ThreadCount];
+            var results = new List<RiakMapReduceResult>[ThreadCount];
             var watch = Stopwatch.StartNew();
             Parallel.For(0, ThreadCount, i =>
                 {
@@ -85,9 +85,9 @@ namespace CorrugatedIron.Tests.Live.LoadTests
             var failures = 0;
             foreach (var r in results.SelectMany(l => l))
             {
-                if (r.IsSuccess)
+                if (r != null)
                 {
-                    var resultValue = JsonConvert.DeserializeObject<int[]>(r.Value.PhaseResults.ElementAt(1).Values.First().FromRiakString())[0];
+                    var resultValue = JsonConvert.DeserializeObject<int[]>(r.PhaseResults.ElementAt(1).Values.First().FromRiakString())[0];
                     resultValue.ShouldEqual(10);
                     //r.Value.PhaseResults.ElementAt(1).GetObject<int[]>()[0].ShouldEqual(10);
                 }
@@ -95,7 +95,7 @@ namespace CorrugatedIron.Tests.Live.LoadTests
                 {
                     // the only acceptable result is that it ran out of retries when
                     // talking to the cluster (trying to get a connection)
-                    r.ResultCode.ShouldEqual(ResultCode.NoRetries);
+                    //r.ResultCode.ShouldEqual(ResultCode.NoRetries);
                     ++failures;
                 }
             }
@@ -103,7 +103,7 @@ namespace CorrugatedIron.Tests.Live.LoadTests
             Console.WriteLine("Total of {0} out of {1} failed to execute due to connection contention. Execution time = {2} milliseconds, for an average of {3} milliseconds", failures, ThreadCount * ActionCount, executionTime.TotalMilliseconds, (executionTime.TotalMilliseconds/(ThreadCount * ActionCount)));
         }
 
-        private List<RiakResult<RiakMapReduceResult>> DoMapRed(RiakMapReduceQuery query)
+        private List<RiakMapReduceResult> DoMapRed(RiakMapReduceQuery query)
         {
             var client = Cluster.CreateClient();
 
@@ -123,7 +123,7 @@ namespace CorrugatedIron.Tests.Live.LoadTests
                 keys.Add(key);
 
                 var result = Client.Put(doc, new RiakPutOptions { ReturnBody = true });
-                result.IsSuccess.ShouldBeTrue();
+                result.ShouldNotBeNull();
             }
 
             var input = new RiakBucketKeyInput();
@@ -172,9 +172,9 @@ namespace CorrugatedIron.Tests.Live.LoadTests
             var results = ActionCount.Times(() =>
                 {
                     var streamedResults = client.StreamMapReduce(query);
-                    if (streamedResults.IsSuccess)
+                    if (streamedResults != null)
                     {
-                        return streamedResults.Value.PhaseResults;
+                        return streamedResults.PhaseResults;
                     }
                     return null;
                 }).Where(r => r != null).SelectMany(r => r);

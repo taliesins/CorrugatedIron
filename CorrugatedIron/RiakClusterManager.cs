@@ -1,6 +1,4 @@
-﻿using CorrugatedIron.Config;
-
-namespace CorrugatedIron
+﻿namespace CorrugatedIron
 {
     public sealed class RiakClusterManager : IRiakClusterManager
     {

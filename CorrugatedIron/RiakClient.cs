@@ -14,17 +14,14 @@
 // specific language governing permissions and limitations
 // under the License.
 
+using System;
 using System.Linq;
 using System.Reactive.Linq;
-using System.Threading.Tasks;
-using CorrugatedIron.Comms;
-using CorrugatedIron.Extensions;
 using CorrugatedIron.Models;
 using CorrugatedIron.Models.Index;
 using CorrugatedIron.Models.MapReduce;
 using CorrugatedIron.Models.Search;
 using CorrugatedIron.Util;
-using System;
 using System.Collections.Generic;
 using System.Numerics;
 
@@ -34,19 +31,36 @@ namespace CorrugatedIron
     {
         private readonly IRiakEndPoint _endPoint;
 
-        public int RetryCount { get; set; }
-
         public IRiakAsyncClient Async { get; private set; }
+
+        public void Batch(Action<IRiakBatchClient> batchAction)
+        {
+            var batchEndPoint = new RiakBatch(_endPoint);
+            var batchedClient = new RiakClient(batchEndPoint);
+
+            batchAction(batchedClient);
+        }
+
+        public T Batch<T>(Func<IRiakBatchClient, T> batchFunction)
+        {
+            var batchEndPoint = new RiakBatch(_endPoint);
+            var batchedClient = new RiakClient(batchEndPoint);
+
+            return batchFunction(batchedClient);
+        }
+
+        public IEnumerable<T> Batch<T>(Func<IRiakBatchClient, IEnumerable<T>> batchFunction)
+        {
+            var batchEndPoint = new RiakBatch(_endPoint);
+            var batchedClient = new RiakClient(batchEndPoint);
+
+            return batchFunction(batchedClient);
+        }
 
         internal RiakClient(IRiakEndPoint endPoint)
         {
             _endPoint = endPoint;
-            Async = new RiakAsyncClient(_endPoint);
-        }
-
-        private RiakClient(IRiakConnection batchConnection)
-        {
-            Async = new RiakAsyncClient(batchConnection);
+            Async = new RiakAsyncClient(endPoint);
         }
 
         /// <summary>
@@ -58,7 +72,7 @@ namespace CorrugatedIron
         /// Do not use this method to determine individual node health.</description>
         /// <returns>Returns true if the Riak instance has returned a 'pong' response. 
         /// Returns false if Riak is unavailable or returns a 'pang' response. </returns>
-        public RiakResult Ping()
+        public Pong Ping()
         {
             return Async.Ping().ConfigureAwait(false).GetAwaiter().GetResult();   
         }
@@ -109,7 +123,7 @@ namespace CorrugatedIron
         /// that fewer than R/PR nodes responded to the read request. See <see cref="CorrugatedIron.Models.RiakGetOptions" />
         /// for information on how different options change Riak's default behavior.
         /// </remarks>
-        public RiakResult<RiakObject> Get(string bucket, string key, RiakGetOptions options = null)
+        public RiakObject Get(string bucket, string key, RiakGetOptions options = null)
         {
             return Async.Get(bucket, key, options).ConfigureAwait(false).GetAwaiter().GetResult();
         }
@@ -132,7 +146,7 @@ namespace CorrugatedIron
         /// nodes successfully responding and a <paramref name="bucket"/>/<paramref name="key"/> combination
         /// not being found in Riak.
         /// </remarks>
-        public RiakResult<RiakObject> Get(string bucket, string key)
+        public RiakObject Get(string bucket, string key)
         {
             return Async.Get(bucket, key).ConfigureAwait(false).GetAwaiter().GetResult();
         }
@@ -152,7 +166,7 @@ namespace CorrugatedIron
         /// the Riak API does not allow us to distinguish between a 404 resulting from less than <paramref name="rVal"/>
         /// nodes successfully responding and an <paramref name="objectId"/> not being found in Riak.
         /// </remarks>
-        public RiakResult<RiakObject> Get(RiakObjectId objectId, RiakGetOptions options = null)
+        public RiakObject Get(RiakObjectId objectId, RiakGetOptions options = null)
         {
             return Async.Get(objectId, options).ConfigureAwait(false).GetAwaiter().GetResult();
         }
@@ -172,9 +186,9 @@ namespace CorrugatedIron
         /// get requests and returns results as an IEnumerable{RiakResult{RiakObject}}. Callers should be aware that
         /// this may result in partial success - all results should be evaluated individually in the calling application.
         /// In addition, applications should plan for multiple failures or multiple cases of siblings being present.</remarks>
-        public IEnumerable<RiakResult<RiakObject>> Get(IEnumerable<RiakObjectId> bucketKeyPairs, RiakGetOptions options = null)
+        public IEnumerable<RiakObject> Get(IEnumerable<RiakObjectId> bucketKeyPairs, RiakGetOptions options = null)
         {
-            return Async.Get(bucketKeyPairs, options).ConfigureAwait(false).GetAwaiter().GetResult().ToEnumerable().ToList();
+            return Async.Get(bucketKeyPairs, options).ToEnumerable().ToList();
         }
 
         /// <summary>
@@ -186,7 +200,7 @@ namespace CorrugatedIron
         /// <param name='options'>
         /// Put options
         /// </param>
-        public RiakResult<RiakObject> Put(RiakObject value, RiakPutOptions options = null)
+        public RiakObject Put(RiakObject value, RiakPutOptions options = null)
         {
             return Async.Put(value, options).ConfigureAwait(false).GetAwaiter().GetResult();
         }
@@ -206,9 +220,9 @@ namespace CorrugatedIron
         /// put requests and returns results as an IEnumerable{RiakResult{RiakObject}}. Callers should be aware that
         /// this may result in partial success - all results should be evaluated individually in the calling application.
         /// In addition, applications should plan for multiple failures or multiple cases of siblings being present.</remarks>
-        public IEnumerable<RiakResult<RiakObject>> Put(IEnumerable<RiakObject> values, RiakPutOptions options = null)
+        public IEnumerable<RiakObject> Put(IEnumerable<RiakObject> values, RiakPutOptions options = null)
         {
-            return Async.Put(values, options).ConfigureAwait(false).GetAwaiter().GetResult().ToEnumerable().ToList();
+            return Async.Put(values, options).ToEnumerable().ToList();
         }
 
         /// <summary>
@@ -217,7 +231,7 @@ namespace CorrugatedIron
         /// <param name='riakObject'>
         /// The object to delete
         /// </param>
-        public RiakResult Delete(RiakObject riakObject, RiakDeleteOptions options = null)
+        public RiakObjectId Delete(RiakObject riakObject, RiakDeleteOptions options = null)
         {
             return Async.Delete(riakObject, options).ConfigureAwait(false).GetAwaiter().GetResult();
         }
@@ -234,7 +248,7 @@ namespace CorrugatedIron
         /// <param name='options'>
         /// Delete options
         /// </param>
-        public RiakResult Delete(string bucket, string key, RiakDeleteOptions options = null)
+        public RiakObjectId Delete(string bucket, string key, RiakDeleteOptions options = null)
         {
             return Async.Delete(bucket, key, options).ConfigureAwait(false).GetAwaiter().GetResult();
         }
@@ -248,7 +262,7 @@ namespace CorrugatedIron
         /// <param name='options'>
         /// Delete options
         /// </param>
-        public RiakResult Delete(RiakObjectId objectId, RiakDeleteOptions options = null)
+        public RiakObjectId Delete(RiakObjectId objectId, RiakDeleteOptions options = null)
         {
             return Async.Delete(objectId, options).ConfigureAwait(false).GetAwaiter().GetResult();
         }
@@ -262,9 +276,11 @@ namespace CorrugatedIron
         /// <param name='options'>
         /// Delete options.
         /// </param>    
-        public IEnumerable<RiakResult> Delete(IEnumerable<RiakObjectId> objectIds, RiakDeleteOptions options = null)
+        public IEnumerable<RiakObjectId> Delete(IEnumerable<RiakObjectId> objectIds, RiakDeleteOptions options = null)
         {
-            return Async.Delete(objectIds, options).ConfigureAwait(false).GetAwaiter().GetResult().ToEnumerable().ToList();
+            return Async.Delete(objectIds, options)
+                .ToEnumerable()
+                .ToList();
         }
 
         /// <summary>
@@ -292,12 +308,11 @@ namespace CorrugatedIron
         /// known amounts of data.
         /// </para>
         /// </remarks>
-        public IEnumerable<RiakResult> DeleteBucket(string bucket, RiakDeleteOptions deleteOptions)
+        public IEnumerable<RiakObjectId> DeleteBucket(string bucket, RiakDeleteOptions deleteOptions)
         {
-            var result = Async.DeleteBucket(bucket, deleteOptions).ConfigureAwait(false).GetAwaiter().GetResult()
+            return Async.DeleteBucket(bucket, deleteOptions)
                 .ToEnumerable()
                 .ToList();
-            return result;
         }
 
         /// <summary>
@@ -305,7 +320,7 @@ namespace CorrugatedIron
         /// </summary>
         /// <param name="search">The <see cref="RiakSearchRequest"/></param>
         /// <returns>A <see cref="RiakResult"/> of <see cref="RiakSearchResult"/></returns>
-        public RiakResult<RiakSearchResult> Search(RiakSearchRequest search)
+        public RiakSearchResult Search(RiakSearchRequest search)
         {
             return Async.Search(search).ConfigureAwait(false).GetAwaiter().GetResult();
         }
@@ -315,10 +330,9 @@ namespace CorrugatedIron
         /// </summary>
         /// <param name="query">A <see cref="RiakMapReduceQuery"/></param>
         /// <returns>A <see cref="RiakResult"/> of <see cref="RiakMapReduceResult"/></returns>
-        public RiakResult<RiakMapReduceResult> MapReduce(RiakMapReduceQuery query)
+        public RiakMapReduceResult MapReduce(RiakMapReduceQuery query)
         {
-            var result = Async.MapReduce(query).ConfigureAwait(false).GetAwaiter().GetResult();
-            return result;
+            return Async.MapReduce(query).ConfigureAwait(false).GetAwaiter().GetResult();
         }
 
         /// <summary>
@@ -327,7 +341,7 @@ namespace CorrugatedIron
         /// <param name="query">The query</param>
         /// <returns>A <see cref="RiakResult"/> of <see cref="RiakStreamedMapReduceResult"/></returns>
         /// <remarks>Make sure to fully enumerate the <see cref="RiakStreamedMapReduceResult"/> or connections may be left open.</remarks>
-        public RiakResult<RiakStreamedMapReduceResult> StreamMapReduce(RiakMapReduceQuery query)
+        public RiakStreamedMapReduceResult StreamMapReduce(RiakMapReduceQuery query)
         {
             return Async.StreamMapReduce(query).ConfigureAwait(false).GetAwaiter().GetResult();
         }
@@ -341,9 +355,9 @@ namespace CorrugatedIron
         /// <remarks>Buckets provide a logical namespace for keys. Listing buckets requires folding over all keys in a cluster and 
         /// reading a list of buckets from disk. This operation, while non-blocking in Riak 1.0 and newer, still produces considerable
         /// physical I/O and can take a long time.</remarks>
-        public RiakResult<IEnumerable<string>> ListBuckets()
+        public IEnumerable<string> ListBuckets()
         {
-            return RiakResult<IObservable<string>>.ToEnumerable(Async.ListBuckets().ConfigureAwait(false).GetAwaiter().GetResult());
+            return Async.ListBuckets().ToEnumerable().ToList();
         }
 
         /// <summary>
@@ -356,9 +370,9 @@ namespace CorrugatedIron
         /// <remarks>Buckets provide a logical namespace for keys. Listing buckets requires folding over all keys in a cluster and 
         /// reading a list of buckets from disk. This operation, while non-blocking in Riak 1.0 and newer, still produces considerable
         /// physical I/O and can take a long time. Callers should fully enumerate the collection or else close the connection when finished.</remarks>
-        public RiakResult<IEnumerable<string>> StreamListBuckets()
+        public IEnumerable<string> StreamListBuckets()
         {
-            return RiakResult<IObservable<string>>.ToEnumerable(Async.StreamListBuckets().ConfigureAwait(false).GetAwaiter().GetResult());
+            return Async.StreamListBuckets().ToEnumerable().ToList();
         }
 
         /// <summary>
@@ -372,9 +386,9 @@ namespace CorrugatedIron
         /// </param>
         /// <remarks>ListKeys is an expensive operation that requires folding over all data in the Riak cluster to produce
         /// a list of keys. This operation, while cheaper in Riak 1.0 than in earlier versions of Riak, should be avoided.</remarks>
-        public RiakResult<IEnumerable<string>> ListKeys(string bucket)
+        public IEnumerable<string> ListKeys(string bucket)
         {
-            return RiakResult<IObservable<string>>.ToEnumerable(Async.ListKeys(bucket).ConfigureAwait(false).GetAwaiter().GetResult());
+            return Async.ListKeys(bucket).ToEnumerable().ToList();
         }
 
         /// <summary>
@@ -385,9 +399,9 @@ namespace CorrugatedIron
         /// <remarks>While this streams results back to the client, alleviating pressure on Riak, this still relies on
         /// folding over all keys present in the Riak cluster. Use at your own risk. A better approach would be to
         /// use <see cref="ListKeysFromIndex"/></remarks>
-        public RiakResult<IEnumerable<string>> StreamListKeys(string bucket)
+        public IEnumerable<string> StreamListKeys(string bucket)
         {
-            return RiakResult<IObservable<string>>.ToEnumerable(Async.StreamListKeys(bucket).ConfigureAwait(false).GetAwaiter().GetResult());
+            return Async.StreamListKeys(bucket).ToEnumerable().ToList();
         }
 
         /// <summary>
@@ -397,9 +411,9 @@ namespace CorrugatedIron
         /// <returns></returns>
         /// <remarks>This uses the $key special index instead of the list keys API to 
         /// quickly return an unsorted list of keys from Riak.</remarks>
-        public RiakResult<IList<string>> ListKeysFromIndex(string bucket)
+        public IEnumerable<string> ListKeysFromIndex(string bucket)
         {
-            return Async.ListKeysFromIndex(bucket).ConfigureAwait(false).GetAwaiter().GetResult();
+            return Async.ListKeysFromIndex(bucket).ToEnumerable().ToList();
         }
 
         /// <summary>
@@ -411,7 +425,7 @@ namespace CorrugatedIron
         /// <param name='bucket'>
         /// The Riak bucket.
         /// </param>
-        public RiakResult<RiakBucketProperties> GetBucketProperties(string bucket)
+        public RiakBucketProperties GetBucketProperties(string bucket)
         {
             return Async.GetBucketProperties(bucket).ConfigureAwait(false).GetAwaiter().GetResult();
         }
@@ -429,7 +443,7 @@ namespace CorrugatedIron
         /// The Properties.
         /// </param>
         /// <param name='useHttp'>When true, CorrugatedIron will use the HTTP interface</param>
-        public RiakResult SetBucketProperties(string bucket, RiakBucketProperties properties, bool useHttp = false)
+        public bool SetBucketProperties(string bucket, RiakBucketProperties properties, bool useHttp = false)
         {
             return Async.SetBucketProperties(bucket, properties, useHttp).ConfigureAwait(false).GetAwaiter().GetResult();
         }
@@ -440,7 +454,7 @@ namespace CorrugatedIron
         /// <param name="bucket">The name of the bucket to reset the properties on.</param>
         /// <param name="useHttp">Whether or not to use the HTTP interface to Riak. Set to true for Riak 1.3 and earlier</param> 
         /// <returns>An indication of success or failure.</returns>
-        public RiakResult ResetBucketProperties(string bucket, bool useHttp = false)
+        public bool ResetBucketProperties(string bucket, bool useHttp = false)
         {
             return Async.ResetBucketProperties(bucket, useHttp).ConfigureAwait(false).GetAwaiter().GetResult();
         }
@@ -458,9 +472,9 @@ namespace CorrugatedIron
         /// A list of link definitions
         /// </param>
         /// <remarks>Refer to http://wiki.basho.com/Links-and-Link-Walking.html for more information.</remarks>
-        public RiakResult<IList<RiakObject>> WalkLinks(RiakObject riakObject, IList<RiakLink> riakLinks)
+        public IEnumerable<RiakObject> WalkLinks(RiakObject riakObject, IList<RiakLink> riakLinks)
         {
-            return Async.WalkLinks(riakObject, riakLinks).ConfigureAwait(false).GetAwaiter().GetResult();
+            return Async.WalkLinks(riakObject, riakLinks).ToEnumerable().ToList();
         }
 
         /// <summary>
@@ -471,7 +485,7 @@ namespace CorrugatedIron
         /// the same version of Riak. It will only get executed on a single node, and the content
         /// that is returned technically only relates to that node. All nodes in a cluster should
         /// run on the same version of Riak.</remarks>
-        public RiakResult<RiakServerInfo> GetServerInfo()
+        public RiakServerInfo GetServerInfo()
         {
             return Async.GetServerInfo().ConfigureAwait(false).GetAwaiter().GetResult();
         }
@@ -486,7 +500,7 @@ namespace CorrugatedIron
         /// <returns>A <see cref="RiakResult{T}"/> of <see cref="RiakStreamedIndexResult"/> containing an <see cref="IEnumerable{T}"/>
         /// of <see cref="RiakIndexKeyTerm"/></returns>
         /// <remarks>Make sure to fully enumerate the <see cref="IEnumerable{T}"/> of <see cref="RiakIndexKeyTerm"/>.</remarks>
-        public RiakResult<RiakStreamedIndexResult> StreamIndexGet(string bucket, string indexName, BigInteger value, RiakIndexGetOptions options = null)
+        public RiakStreamedIndexResult StreamIndexGet(string bucket, string indexName, BigInteger value, RiakIndexGetOptions options = null)
         {
             return Async.StreamIndexGet(bucket, indexName, value, options).ConfigureAwait(false).GetAwaiter().GetResult();
         }
@@ -501,7 +515,7 @@ namespace CorrugatedIron
         /// <returns>A <see cref="RiakResult{T}"/> of <see cref="RiakStreamedIndexResult"/> containing an <see cref="IEnumerable{T}"/>
         /// of <see cref="RiakIndexKeyTerm"/></returns>
         /// <remarks>Make sure to fully enumerate the <see cref="IEnumerable{T}"/> of <see cref="RiakIndexKeyTerm"/>.</remarks>
-        public RiakResult<RiakStreamedIndexResult> StreamIndexGet(string bucket, string indexName, string value, RiakIndexGetOptions options = null)
+        public RiakStreamedIndexResult StreamIndexGet(string bucket, string indexName, string value, RiakIndexGetOptions options = null)
         {
             return Async.StreamIndexGet(bucket, indexName, value, options).ConfigureAwait(false).GetAwaiter().GetResult();
         }
@@ -517,7 +531,7 @@ namespace CorrugatedIron
         /// <returns>A <see cref="RiakResult{T}"/> of <see cref="RiakStreamedIndexResult"/> containing an <see cref="IEnumerable{T}"/>
         /// of <see cref="RiakIndexKeyTerm"/></returns>
         /// <remarks>Make sure to fully enumerate the <see cref="IEnumerable{T}"/> of <see cref="RiakIndexKeyTerm"/>.</remarks>
-        public RiakResult<RiakStreamedIndexResult> StreamIndexGet(string bucket, string indexName, BigInteger minValue, BigInteger maxValue, RiakIndexGetOptions options = null)
+        public RiakStreamedIndexResult StreamIndexGet(string bucket, string indexName, BigInteger minValue, BigInteger maxValue, RiakIndexGetOptions options = null)
         {
             return Async.StreamIndexGet(bucket, indexName, minValue, maxValue, options).ConfigureAwait(false).GetAwaiter().GetResult();
         }
@@ -533,7 +547,7 @@ namespace CorrugatedIron
         /// <returns>A <see cref="RiakResult{T}"/> of <see cref="RiakStreamedIndexResult"/> containing an <see cref="IEnumerable{T}"/>
         /// of <see cref="RiakIndexKeyTerm"/></returns>
         /// <remarks>Make sure to fully enumerate the <see cref="IEnumerable{T}"/> of <see cref="RiakIndexKeyTerm"/>.</remarks>
-        public RiakResult<RiakStreamedIndexResult> StreamIndexGet(string bucket, string indexName, string minValue, string maxValue, RiakIndexGetOptions options = null)
+        public RiakStreamedIndexResult StreamIndexGet(string bucket, string indexName, string minValue, string maxValue, RiakIndexGetOptions options = null)
         {
             return Async.StreamIndexGet(bucket, indexName, minValue, maxValue, options).ConfigureAwait(false).GetAwaiter().GetResult();
         }
@@ -547,7 +561,7 @@ namespace CorrugatedIron
         /// <param name="maxValue">The end of the indexed range to search for</param>
         /// <param name="options">The <see cref="RiakIndexGetOptions"/></param>
         /// <returns>A <see cref="RiakResult{T}"/> of <see cref="RiakIndexResult"/></returns>
-        public RiakResult<RiakIndexResult> IndexGet(string bucket, string indexName, string minValue, string maxValue, RiakIndexGetOptions options = null)
+        public RiakIndexResult IndexGet(string bucket, string indexName, string minValue, string maxValue, RiakIndexGetOptions options = null)
         {
             return Async.IndexGet(bucket, indexName, minValue, maxValue, options).ConfigureAwait(false).GetAwaiter().GetResult();
         }
@@ -561,7 +575,7 @@ namespace CorrugatedIron
         /// <param name="maxValue">The end of the indexed range to search for</param>
         /// <param name="options">The <see cref="RiakIndexGetOptions"/></param>
         /// <returns>A <see cref="RiakResult{T}"/> of <see cref="RiakIndexResult"/></returns>
-        public RiakResult<RiakIndexResult> IndexGet(string bucket, string indexName, BigInteger minValue, BigInteger maxValue, RiakIndexGetOptions options = null)
+        public RiakIndexResult IndexGet(string bucket, string indexName, BigInteger minValue, BigInteger maxValue, RiakIndexGetOptions options = null)
         {
             return Async.IndexGet(bucket, indexName, minValue, maxValue, options).ConfigureAwait(false).GetAwaiter().GetResult();
         }
@@ -574,7 +588,7 @@ namespace CorrugatedIron
         /// <param name="value">The indexed value to search for</param>
         /// <param name="options">The <see cref="RiakIndexGetOptions"/></param>
         /// <returns>A <see cref="RiakResult{T}"/> of <see cref="RiakIndexResult"/></returns>
-        public RiakResult<RiakIndexResult> IndexGet(string bucket, string indexName, string value, RiakIndexGetOptions options = null)
+        public RiakIndexResult IndexGet(string bucket, string indexName, string value, RiakIndexGetOptions options = null)
         {
             return Async.IndexGet(bucket, indexName, value, options).ConfigureAwait(false).GetAwaiter().GetResult();
         }
@@ -587,95 +601,9 @@ namespace CorrugatedIron
         /// <param name="value">The indexed value to search for</param>
         /// <param name="options">The <see cref="RiakIndexGetOptions"/></param>
         /// <returns>A <see cref="RiakResult{T}"/> of <see cref="RiakIndexResult"/></returns>
-        public RiakResult<RiakIndexResult> IndexGet(string bucket, string indexName, BigInteger value, RiakIndexGetOptions options = null)
+        public RiakIndexResult IndexGet(string bucket, string indexName, BigInteger value, RiakIndexGetOptions options = null)
         {
             return Async.IndexGet(bucket, indexName, value, options).ConfigureAwait(false).GetAwaiter().GetResult();
-        }
-
-        /// <summary>
-        /// Used to create a batched set of actions to be sent to a Riak cluster. This guarantees some level of serialized activity.
-        /// </summary>
-        /// <param name='batchAction'>
-        /// Batch action.
-        /// </param>
-        /// <exception cref='Exception'>
-        /// Represents errors that occur during application execution.
-        /// </exception>
-        public void Batch(Action<IRiakBatchClient> batchAction)
-        {
-            Func<IRiakConnection, Task<RiakResult<RiakResult>>> helperBatchFun = (conn) =>
-            {
-                try
-                {
-                    batchAction(new RiakClient(conn));
-                    return Task.FromResult(RiakResult<RiakResult>.Success(null));
-                }
-                catch (Exception ex)
-                {
-                    return Task.FromResult(RiakResult<RiakResult>.Error(ResultCode.BatchException, "{0}\n{1}".Fmt(ex.Message, ex.StackTrace), true));
-                }
-            };
-
-            var result = _endPoint.UseConnection(helperBatchFun, RetryCount).ConfigureAwait(false).GetAwaiter().GetResult();
-
-            if (!result.IsSuccess && result.ResultCode == ResultCode.BatchException)
-            {
-                throw new Exception(result.ErrorMessage);
-            }
-        }
-
-        public T Batch<T>(Func<IRiakBatchClient, T> batchFun)
-        {
-            var funResult = default(T);
-
-            Func<IRiakConnection, Task<RiakResult<RiakResult<object>>>> helperBatchFun = (conn) =>
-            {
-                try
-                {
-                    funResult = batchFun(new RiakClient(conn));
-                    return Task.FromResult(RiakResult<RiakResult<object>>.Success(null));
-                }
-                catch(Exception ex)
-                {
-                    return Task.FromResult(RiakResult<RiakResult<object>>.Error(ResultCode.BatchException, "{0}\n{1}".Fmt(ex.Message, ex.StackTrace), true));
-                }
-            };
-
-            var result = _endPoint.UseConnection(helperBatchFun, RetryCount).ConfigureAwait(false).GetAwaiter().GetResult(); 
-
-            if(!result.IsSuccess && result.ResultCode == ResultCode.BatchException)
-            {
-                throw new Exception(result.ErrorMessage);
-            }
-
-            return funResult;
-        }
-
-        public IEnumerable<T> Batch<T>(Func<IRiakBatchClient, IEnumerable<T>> batchFun)
-        {
-            var funResult = default(IEnumerable<T>);
-
-            Func<IRiakConnection, Task<RiakResult<IEnumerable<RiakResult<object>>>>> helperBatchFun = (conn) =>
-            {
-                try
-                {
-                    funResult = batchFun(new RiakClient(conn));
-                    return Task.FromResult(RiakResult<IEnumerable<RiakResult<object>>>.Success(null));
-                }
-                catch (Exception ex)
-                {
-                    return Task.FromResult(RiakResult<IEnumerable<RiakResult<object>>>.Error(ResultCode.BatchException, "{0}\n{1}".Fmt(ex.Message, ex.StackTrace), true));
-                }
-            };
-
-            var result = _endPoint.UseConnection(helperBatchFun, RetryCount).ConfigureAwait(false).GetAwaiter().GetResult();
-
-            if (!result.IsSuccess && result.ResultCode == ResultCode.BatchException)
-            {
-                throw new Exception(result.ErrorMessage);
-            }
-
-            return funResult;
         }
 
         internal static RiakGetOptions DefaultGetOptions()

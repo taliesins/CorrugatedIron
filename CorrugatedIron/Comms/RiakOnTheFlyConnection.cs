@@ -14,68 +14,26 @@
 // specific language governing permissions and limitations
 // under the License.
 
-using System.Threading.Tasks;
 using CorrugatedIron.Comms.Sockets;
 using CorrugatedIron.Config;
-using System;
+using CorrugatedIron.Extensions;
 
 namespace CorrugatedIron.Comms
 {
     internal class RiakOnTheFlyConnection : IRiakConnectionManager
     {
         private readonly IRiakNodeConfiguration _nodeConfig;
-        private readonly IRiakConnectionFactory _connFactory;
         private readonly SocketAwaitablePool _pool;
         private readonly BlockingBufferManager _bufferManager;
+        private readonly string _serverUrl;
         private bool _disposing;
 
-        public RiakOnTheFlyConnection(IRiakNodeConfiguration nodeConfig, IRiakConnectionFactory connFactory, int bufferPoolSize = 20)
+        public RiakOnTheFlyConnection(IRiakNodeConfiguration nodeConfig, int bufferPoolSize = 20)
         {
             _nodeConfig = nodeConfig;
-            _connFactory = connFactory;
+            _serverUrl = @"{0}://{1}:{2}".Fmt(nodeConfig.RestScheme, nodeConfig.HostAddress, nodeConfig.RestPort);
             _pool = new SocketAwaitablePool(nodeConfig.PoolSize);
             _bufferManager = new BlockingBufferManager(nodeConfig.BufferSize, bufferPoolSize);
-        }
-
-        public Tuple<bool, Task<TResult>> Consume<TResult>(Func<IRiakConnection, Task<TResult>> consumer)
-        {
-            if (_disposing)
-            {
-                return Tuple.Create<bool, Task<TResult>>(false, null);
-            }
-
-            IRiakConnection conn = null;
-
-            try
-            {
-                conn = _connFactory.CreateConnection(_nodeConfig, _pool, _bufferManager);
-
-                Func<Task<TResult>, object, TResult> cleanup = (task, state) =>
-                {
-                    var r = task.ConfigureAwait(false).GetAwaiter().GetResult();
-
-                    var riakConnection = state as IRiakConnection;
-                    if (riakConnection != null)
-                    {
-                        riakConnection.Dispose();
-                    }
-
-                    return r;
-                };
-
-                var result = consumer(conn)
-                    .ContinueWith(cleanup, conn);
-
-                return Tuple.Create(true, result);
-            }
-            catch(Exception)
-            {
-                if (conn != null)
-                {
-                    conn.Dispose();
-                }
-                return Tuple.Create<bool, Task<TResult>>(false, null);
-            }
         }
 
         public void Dispose()
@@ -83,6 +41,33 @@ namespace CorrugatedIron.Comms
             if(_disposing) return;
 
             _disposing = true;
+        }
+
+        public string CreateServerUrl()
+        {
+            return _serverUrl;
+        }
+
+        public void Release(string serverUrl)
+        {
+        }
+
+        public RiakPbcSocket CreateSocket()
+        {
+            var socket = new RiakPbcSocket(
+                    _nodeConfig.HostAddress,
+                    _nodeConfig.PbcPort,
+                    _nodeConfig.NetworkReadTimeout,
+                    _nodeConfig.NetworkWriteTimeout,
+                    _pool,
+                    _bufferManager);
+
+            return socket;
+        }
+
+        public void Release(RiakPbcSocket socket)
+        {
+            socket.Dispose();
         }
     }
 }

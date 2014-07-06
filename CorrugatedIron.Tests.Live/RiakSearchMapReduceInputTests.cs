@@ -43,12 +43,12 @@ namespace CorrugatedIron.Tests.Live
         [SetUp]
         public void SetUp() 
         {
-            Cluster = new RiakCluster(ClusterConfig, new RiakConnectionFactory());
+            Cluster = new RiakCluster(ClusterConfig);
             Client = Cluster.CreateClient();
             
-            var props = Client.GetBucketProperties(Bucket).Value;
+            var props = Client.GetBucketProperties(Bucket);
             props.SetSearch(true);
-            Client.SetBucketProperties(Bucket, props);
+            Client.SetBucketProperties(Bucket, props).ShouldBeTrue();
         }
         
         [TearDown]
@@ -67,9 +67,9 @@ namespace CorrugatedIron.Tests.Live
                 .Inputs(new RiakBucketSearchInput(Bucket, "name:A1*"));
 
             var result = Client.MapReduce(mr);
-            result.IsSuccess.ShouldBeTrue(result.ErrorMessage);
+            result.ShouldNotBeNull();
             
-            var mrResult = result.Value;
+            var mrResult = result;
             mrResult.PhaseResults.Count().ShouldEqual(1);
             
             mrResult.PhaseResults.ElementAt(0).Values.ShouldNotBeNull();
@@ -87,9 +87,9 @@ namespace CorrugatedIron.Tests.Live
                 .Inputs(new RiakBucketSearchInput(search));
 
             var result = Client.MapReduce(mr);
-            result.IsSuccess.ShouldBeTrue(result.ErrorMessage);
+            result.ShouldNotBeNull();
             
-            var mrResult = result.Value;
+            var mrResult = result;
             mrResult.PhaseResults.Count().ShouldEqual(1);
             
             mrResult.PhaseResults.ElementAt(0).Values.ShouldNotBeNull();

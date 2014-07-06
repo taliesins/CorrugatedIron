@@ -25,10 +25,10 @@ namespace CorrugatedIron.Models.Index
 {
     public class RiakStreamedIndexResult : IRiakIndexResult
     {
-        private readonly IEnumerable<RiakResult<RpbIndexResp>> _responseReader;
+        private readonly IEnumerable<RpbIndexResp> _responseReader;
         private readonly bool _includeTerms;
 
-        public RiakStreamedIndexResult(bool includeTerms, IObservable<RiakResult<RpbIndexResp>> responseReader)
+        public RiakStreamedIndexResult(bool includeTerms, IObservable<RpbIndexResp> responseReader)
         {
             _responseReader = responseReader.ToEnumerable();
             _includeTerms = includeTerms;
@@ -39,7 +39,7 @@ namespace CorrugatedIron.Models.Index
             get
             {
                 return _responseReader
-                    .SelectMany(item => GetIndexKeyTerm(item.Value))
+                    .SelectMany(GetIndexKeyTerm)
                     .ToList();
             }
         }

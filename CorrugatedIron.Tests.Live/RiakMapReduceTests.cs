@@ -51,7 +51,7 @@ namespace CorrugatedIron.Tests.Live
         [SetUp]
         public void SetUp()
         {
-            Cluster = new RiakCluster(ClusterConfig, new RiakConnectionFactory());
+            Cluster = new RiakCluster(ClusterConfig);
             Client = Cluster.CreateClient();
         }
 
@@ -77,9 +77,9 @@ namespace CorrugatedIron.Tests.Live
                 .ReduceJs(r => r.Name("Riak.reduceSum").Keep(true));
 
             var result = Client.MapReduce(mr);
-            result.IsSuccess.ShouldBeTrue();
+            result.ShouldNotBeNull();
 
-            var mrResult = result.Value;
+            var mrResult = result;
             mrResult.PhaseResults.ShouldNotBeNull();
             mrResult.PhaseResults.Count().ShouldEqual(2);
 
@@ -110,9 +110,9 @@ namespace CorrugatedIron.Tests.Live
                 .ReduceJs(r => r.Name("Riak.reduceSum").Keep(true));
 
             var result = Client.MapReduce(mr);
-            result.IsSuccess.ShouldBeTrue();
+            result.ShouldNotBeNull();
 
-            var mrResult = result.Value;
+            var mrResult = result;
             mrResult.PhaseResults.ShouldNotBeNull();
             mrResult.PhaseResults.Count().ShouldEqual(2);
 
@@ -122,7 +122,7 @@ namespace CorrugatedIron.Tests.Live
             mrResult.PhaseResults.ElementAt(0).Values.Count().ShouldEqual(0);
             mrResult.PhaseResults.ElementAt(1).Values.Count().ShouldNotEqual(0);
    
-            var values = result.Value.PhaseResults.ElementAt(1).GetObjects<int[]>().First();
+            var values = result.PhaseResults.ElementAt(1).GetObjects<int[]>().First();
             values[0].ShouldEqual(10);
         }
 
@@ -145,13 +145,13 @@ namespace CorrugatedIron.Tests.Live
                 .ReduceJs(r => r.Name("Riak.reduceSum").Keep(true));
 
             var result = Client.MapReduce(mr);
-            result.IsSuccess.ShouldBeTrue();
+            result.ShouldNotBeNull();
 
-            var mrResult = result.Value;
+            var mrResult = result;
             mrResult.PhaseResults.ShouldNotBeNull();
             mrResult.PhaseResults.Count().ShouldEqual(2);
 
-            var values = result.Value.PhaseResults.ElementAt(1).GetObjects<int[]>().First();
+            var values = result.PhaseResults.ElementAt(1).GetObjects<int[]>().First();
             values[0].ShouldEqual(5);
         }
     }

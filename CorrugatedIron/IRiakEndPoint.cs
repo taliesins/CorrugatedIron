@@ -22,12 +22,18 @@ namespace CorrugatedIron
 {
     public interface IRiakEndPoint : IDisposable
     {
-        int RetryWaitTime { get; set; }
-
         IRiakClient CreateClient();
 
-        Task<RiakResult> UseConnection(Func<IRiakConnection, Task<RiakResult>> useFun, int retryAttempts);
-        Task<RiakResult<TResult>> UseConnection<TResult>(Func<IRiakConnection, Task<RiakResult<TResult>>> useFun, int retryAttempts);
-        Task<RiakResult<IObservable<TResult>>> UseConnection<TResult>(Func<IRiakConnection, Task<RiakResult<IObservable<TResult>>>> useFun, int retryAttempts);
+        Task GetSingleResultViaPbc(Func<RiakPbcSocket, Task> useFun);
+        Task<TResult> GetSingleResultViaPbc<TResult>(Func<RiakPbcSocket, Task<TResult>> useFun);
+        Task GetMultipleResultViaPbc(Action<RiakPbcSocket> useFun);
+
+        Task GetSingleResultViaPbc(IRiakEndPointContext riakEndPointContext, Func<RiakPbcSocket, Task> useFun);
+        Task<TResult> GetSingleResultViaPbc<TResult>(IRiakEndPointContext riakEndPointContext, Func<RiakPbcSocket, Task<TResult>> useFun);
+        Task GetMultipleResultViaPbc(IRiakEndPointContext riakEndPointContext, Action<RiakPbcSocket> useFun);
+
+        Task GetSingleResultViaRest(Func<string, Task> useFun);
+        Task<TResult> GetSingleResultViaRest<TResult>(Func<string, Task<TResult>> useFun);
+        Task GetMultipleResultViaRest(Action<string> useFun);
     }
 }

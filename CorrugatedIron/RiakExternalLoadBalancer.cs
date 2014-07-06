@@ -18,123 +18,165 @@ using System.Threading.Tasks;
 using CorrugatedIron.Comms;
 using CorrugatedIron.Config;
 using System;
-using System.Threading;
+using CorrugatedIron.Exceptions;
 
 namespace CorrugatedIron
 {
-    public class RiakExternalLoadBalancer : RiakEndPoint
+    public class RiakExternalLoadBalancer : IRiakEndPoint
     {
         private readonly IRiakExternalLoadBalancerConfiguration _lbConfiguration;
         private readonly RiakNode _node;
         private bool _disposing;
 
-        public RiakExternalLoadBalancer(IRiakExternalLoadBalancerConfiguration lbConfiguration, IRiakConnectionFactory connectionFactory)
+        public RiakExternalLoadBalancer(IRiakExternalLoadBalancerConfiguration lbConfiguration)
         {
             _lbConfiguration = lbConfiguration;
-            _node = new RiakNode(_lbConfiguration.Target, connectionFactory);
+            _node = new RiakNode(_lbConfiguration.Target);
         }
 
         public static IRiakEndPoint FromConfig(string configSectionName)
         {
-            return new RiakExternalLoadBalancer(RiakExternalLoadBalancerConfiguration.LoadFromConfig(configSectionName), new RiakConnectionFactory());
+            return new RiakExternalLoadBalancer(RiakExternalLoadBalancerConfiguration.LoadFromConfig(configSectionName));
         }
 
         public static IRiakEndPoint FromConfig(string configSectionName, string configFileName)
         {
-            return new RiakExternalLoadBalancer(RiakExternalLoadBalancerConfiguration.LoadFromConfig(configSectionName, configFileName), new RiakConnectionFactory());
+            return new RiakExternalLoadBalancer(RiakExternalLoadBalancerConfiguration.LoadFromConfig(configSectionName, configFileName));
         }
 
-        protected override int DefaultRetryCount
-        {
-            get { return _lbConfiguration.DefaultRetryCount; }
-        }
-
-        protected async override Task<RiakResult> UseConnection(Func<IRiakConnection, Task<RiakResult>> useFun, Func<ResultCode, string, bool, RiakResult> onError, int retryAttempts)
-        {
-            if (retryAttempts < 0)
-            {
-                return onError(ResultCode.NoRetries, "Unable to access a connection on the cluster.", true);
-            }
-            if (_disposing)
-            {
-                return onError(ResultCode.ShuttingDown, "System currently shutting down", true);
-            }
-
-            var node = _node;
-
-            if (node != null)
-            {
-                var result = await node.UseConnection(useFun);
-                if (!result.IsSuccess)
-                {
-                    Thread.Sleep(RetryWaitTime);
-                    return await UseConnection(useFun, onError, retryAttempts - 1);
-                }
-
-                return result;
-            }
-            return onError(ResultCode.ClusterOffline, "Unable to access functioning Riak node", true);
-        }
-
-        protected async override Task<RiakResult<T>> UseConnection<T>(Func<IRiakConnection, Task<RiakResult<T>>> useFun, Func<ResultCode, string, bool, RiakResult<T>> onError, int retryAttempts)
-        {
-            if (retryAttempts < 0)
-            {
-                return onError(ResultCode.NoRetries, "Unable to access a connection on the cluster.", true);
-            }
-            if (_disposing)
-            {
-                return onError(ResultCode.ShuttingDown, "System currently shutting down", true);
-            }
-
-            var node = _node;
-
-            if (node != null)
-            {
-                var result = await node.UseConnection(useFun);
-                if (!result.IsSuccess)
-                {
-                    Thread.Sleep(RetryWaitTime);
-                    return await UseConnection(useFun, onError, retryAttempts - 1);
-                }
-
-                return result;
-            }
-            return onError(ResultCode.ClusterOffline, "Unable to access functioning Riak node", true);
-        }
-
-        protected async override Task<RiakResult<IObservable<T>>> UseConnection<T>(Func<IRiakConnection, Task<RiakResult<IObservable<T>>>> useFun, Func<ResultCode, string, bool, RiakResult<IObservable<T>>> onError, int retryAttempts)
-        {
-            if (retryAttempts < 0)
-            {
-                return onError(ResultCode.NoRetries, "Unable to access a connection on the cluster.", true);
-            }
-            if (_disposing)
-            {
-                return onError(ResultCode.ShuttingDown, "System currently shutting down", true);
-            }
-
-            var node = _node;
-
-            if (node != null)
-            {
-                var result = await node.UseConnection(useFun);
-                if (!result.IsSuccess)
-                {
-                    Thread.Sleep(RetryWaitTime);
-                    return await UseConnection(useFun, onError, retryAttempts - 1);
-                }
-
-                return result;
-            }
-            return onError(ResultCode.ClusterOffline, "Unable to access functioning Riak node", true);
-        }
-
-        public override void Dispose()
+        public void Dispose()
         {
             _disposing = true;
-
             _node.Dispose();
+        }
+
+        public IRiakClient CreateClient()
+        {
+            return new RiakClient(this);
+        }
+
+        public async Task GetSingleResultViaPbc(Func<RiakPbcSocket, Task> useFun)
+        {
+            if (_disposing)
+            {
+                throw new RiakException((uint)ResultCode.ShuttingDown, "System currently shutting down", true);
+            }
+
+            await _node.GetSingleResultViaPbc(useFun).ConfigureAwait(false);
+        }
+
+        public async Task GetSingleResultViaPbc(IRiakEndPointContext riakEndPointContext, Func<RiakPbcSocket, Task> useFun)
+        {
+            if (_disposing)
+            {
+                throw new RiakException((uint)ResultCode.ShuttingDown, "System currently shutting down", true);
+            }
+
+            if (riakEndPointContext.Node == null)
+            {
+                riakEndPointContext.Node = _node;
+            }
+
+            if (riakEndPointContext.Socket == null)
+            {
+                riakEndPointContext.Socket = riakEndPointContext.Node.CreateSocket();
+            }
+
+            await riakEndPointContext.Node.GetSingleResultViaPbc(riakEndPointContext.Socket, useFun).ConfigureAwait(false);
+        }
+
+        public async Task<TResult> GetSingleResultViaPbc<TResult>(Func<RiakPbcSocket, Task<TResult>> useFun)
+        {
+            if (_disposing)
+            {
+                throw new RiakException((uint)ResultCode.ShuttingDown, "System currently shutting down", true);
+            }
+
+            var result = await _node.GetSingleResultViaPbc(useFun).ConfigureAwait(false);
+
+            return result;
+        }
+
+        public async Task<TResult> GetSingleResultViaPbc<TResult>(IRiakEndPointContext riakEndPointContext, Func<RiakPbcSocket, Task<TResult>> useFun)
+        {
+            if (_disposing)
+            {
+                throw new RiakException((uint)ResultCode.ShuttingDown, "System currently shutting down", true);
+            }
+
+            if (riakEndPointContext.Node == null)
+            {
+                riakEndPointContext.Node = _node;
+            }
+
+            if (riakEndPointContext.Socket == null)
+            {
+                riakEndPointContext.Socket = riakEndPointContext.Node.CreateSocket();
+            }
+
+            var result = await riakEndPointContext.Node.GetSingleResultViaPbc(riakEndPointContext.Socket, useFun).ConfigureAwait(false);
+            return result;
+        }
+
+        public async Task GetMultipleResultViaPbc(Action<RiakPbcSocket> useFun)
+        {
+            if (_disposing)
+            {
+                throw new RiakException((uint)ResultCode.ShuttingDown, "System currently shutting down", true);
+            }
+
+            await _node.GetMultipleResultViaPbc(useFun).ConfigureAwait(false);
+        }
+
+        public async Task GetMultipleResultViaPbc(IRiakEndPointContext riakEndPointContext, Action<RiakPbcSocket> useFun)
+        {
+            if (_disposing)
+            {
+                throw new RiakException((uint)ResultCode.ShuttingDown, "System currently shutting down", true);
+            }
+
+            if (riakEndPointContext.Node == null)
+            {
+                riakEndPointContext.Node = _node;
+            }
+
+            if (riakEndPointContext.Socket == null)
+            {
+                riakEndPointContext.Socket = riakEndPointContext.Node.CreateSocket();
+            }
+
+            await riakEndPointContext.Node.GetMultipleResultViaPbc(riakEndPointContext.Socket, useFun).ConfigureAwait(false);
+        }
+
+        public async Task GetSingleResultViaRest(Func<string, Task> useFun)
+        {
+            if (_disposing)
+            {
+                throw new RiakException((uint)ResultCode.ShuttingDown, "System currently shutting down", true);
+            }
+
+            await _node.GetSingleResultViaRest(useFun).ConfigureAwait(false);
+        }
+
+        public async Task<TResult> GetSingleResultViaRest<TResult>(Func<string, Task<TResult>> useFun)
+        {
+            if (_disposing)
+            {
+                throw new RiakException((uint)ResultCode.ShuttingDown, "System currently shutting down", true);
+            }
+
+            var result = await _node.GetSingleResultViaRest(useFun).ConfigureAwait(false);
+            return result;
+        }
+
+        public async Task GetMultipleResultViaRest(Action<string> useFun)
+        {
+            if (_disposing)
+            {
+                throw new RiakException((uint)ResultCode.ShuttingDown, "System currently shutting down", true);
+            }
+
+            await _node.GetMultipleResultViaRest(useFun).ConfigureAwait(false);
         }
     }
 }

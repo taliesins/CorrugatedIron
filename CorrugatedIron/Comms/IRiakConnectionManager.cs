@@ -15,12 +15,15 @@
 // under the License.
 
 using System;
-using System.Threading.Tasks;
 
 namespace CorrugatedIron.Comms
 {
-    internal interface IRiakConnectionManager : IDisposable
+    public interface IRiakConnectionManager : IDisposable
     {
-        Tuple<bool, Task<TResult>> Consume<TResult>(Func<IRiakConnection, Task<TResult>> consumer);
+        string CreateServerUrl();
+        void Release(string serverUrl);
+
+        RiakPbcSocket CreateSocket();
+        void Release(RiakPbcSocket socket);
     }
 }

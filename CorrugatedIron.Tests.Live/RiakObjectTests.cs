@@ -94,7 +94,7 @@ namespace CorrugatedIron.Tests.Live
 
             var props = new RiakBucketProperties()
                 .SetAllowMultiple(true);
-            Client.SetBucketProperties(Bucket, props);
+            Client.SetBucketProperties(Bucket, props).ShouldBeTrue();
         }
 
         [TearDown]
@@ -106,7 +106,7 @@ namespace CorrugatedIron.Tests.Live
         [Test]
         public void WriteableVectorClocksCanBeUsedToForceSiblings()
         {
-            var oj = Client.Get(Bucket, OJ).Value;
+            var oj = Client.Get(Bucket, OJ);
             var vclock = oj.VectorClock;
 
             var ojTea = oj.GetObject<Person>();
@@ -121,7 +121,7 @@ namespace CorrugatedIron.Tests.Live
             oj.SetObject(ojCoffee);
             Client.Put(oj);
 
-            var multiOj = Client.Get(Bucket, OJ).Value;
+            var multiOj = Client.Get(Bucket, OJ);
 
             oj.VectorClock.ShouldEqual(vclock);
             oj.VectorClock.ShouldNotEqual(multiOj.VectorClock);
@@ -142,7 +142,7 @@ namespace CorrugatedIron.Tests.Live
             var props = new RiakBucketProperties()
                 .SetAllowMultiple(false);
 
-            Client.SetBucketProperties(TestBucket, props);
+            Client.SetBucketProperties(TestBucket, props).ShouldBeTrue();
         }
 
         [TearDown]
@@ -154,7 +154,7 @@ namespace CorrugatedIron.Tests.Live
         [Test]
         public void LinkMetadataIsRetrievedWithAnObject()
         {
-            var jeremiah = Client.Get(TestBucket, Jeremiah).Value;
+            var jeremiah = Client.Get(TestBucket, Jeremiah);
 
             jeremiah.Links.Count.IsAtLeast(4);
         }
@@ -162,7 +162,7 @@ namespace CorrugatedIron.Tests.Live
         [Test]
         public void RiakObjectLinksAreTheSameAsLinksRetrievedViaMapReduce()
         {
-            var jeremiah = Client.Get(TestBucket, Jeremiah).Value;
+            var jeremiah = Client.Get(TestBucket, Jeremiah);
             var jLinks = jeremiah.Links;
 
             var input = new RiakBucketKeyInput()
@@ -173,11 +173,10 @@ namespace CorrugatedIron.Tests.Live
                     .Link(l => l.AllLinks().Keep(true));
 
             var mrResult = Client.MapReduce(query);
-            mrResult.IsSuccess.ShouldBeTrue();
 
             // TODO Is *this* chunk of code acceptable?
             // This should probably be taken care of in the RiakClient.WalkLinks
-            var listOfLinks = mrResult.Value.PhaseResults.OrderBy(pr => pr.Phase)
+            var listOfLinks = mrResult.PhaseResults.OrderBy(pr => pr.Phase)
                 .ElementAt(0).Values
                     .Select(v => RiakLink.ParseArrayFromJsonString(v.FromRiakString()));
 
@@ -201,9 +200,8 @@ namespace CorrugatedIron.Tests.Live
                     .ReduceErlang(r => r.ModFun("riak_kv_mapreduce", "reduce_set_union").Keep(true));
 
             var result = Client.MapReduce(query);
-            result.IsSuccess.ShouldBeTrue();
 
-            var mrResult = result.Value;
+            var mrResult = result;
             mrResult.PhaseResults.ShouldNotBeNull();
             mrResult.PhaseResults.Count().ShouldEqual(2);
         }
@@ -211,7 +209,7 @@ namespace CorrugatedIron.Tests.Live
         [Test]
         public void LinksAreRemovedSuccessfullyInMemory()
         {
-            var jeremiah = Client.Get(TestBucket, Jeremiah).Value;
+            var jeremiah = Client.Get(TestBucket, Jeremiah);
             var linkToRemove = new RiakLink(TestBucket, OJ, "ozzies");
 
             jeremiah.RemoveLink(linkToRemove);
@@ -230,15 +228,15 @@ namespace CorrugatedIron.Tests.Live
         [Test]
         public void LinksAreRemovedAfterSaving()
         {
-            var jeremiah = Client.Get(TestBucket, Jeremiah).Value;
+            var jeremiah = Client.Get(TestBucket, Jeremiah);
             var linkToRemove = new RiakLink(TestBucket, OJ, "ozzies");
 
             jeremiah.RemoveLink(linkToRemove);
 
             var result = Client.Put(jeremiah, new RiakPutOptions { ReturnBody = true });
-            result.IsSuccess.ShouldBeTrue();
+            result.ShouldNotBeNull();
 
-            jeremiah = result.Value;
+            jeremiah = result;
 
             var ojLinks = new List<RiakLink>
 			{
@@ -254,7 +252,7 @@ namespace CorrugatedIron.Tests.Live
         [Test]
         public void LinkWalkingSuccessfullyRetrievesNLevels()
         {
-            var oj = Client.Get(TestBucket, OJ).Value;
+            var oj = Client.Get(TestBucket, OJ);
             var linkPhases = new List<RiakLink>
 			{
 				RiakLink.AllLinks,
@@ -262,8 +260,7 @@ namespace CorrugatedIron.Tests.Live
 			};
 
             var linkPeople = Client.WalkLinks(oj, linkPhases);
-            linkPeople.IsSuccess.ShouldBeTrue();
-            linkPeople.Value.Count.ShouldEqual(6);
+            linkPeople.Count().ShouldEqual(6);
         }
     }
 
@@ -314,7 +311,7 @@ namespace CorrugatedIron.Tests.Live
             var putResult = Client.Put(oj);
 
             var getResult = Client.Get(bucketName, OJ);
-            var newPerson = getResult.Value.GetObject<Person>();
+            var newPerson = getResult.GetObject<Person>();
 
             ojPerson.Name.ShouldEqual(newPerson.Name);
 
@@ -337,7 +334,7 @@ namespace CorrugatedIron.Tests.Live
             var putResult2 = Client.Put(ro);
 
             var getResult2 = Client.Get(bucketName, testPerson.Id.ToString());
-            var testPerson2 = getResult2.Value.GetObject<ProtoBufPerson>();
+            var testPerson2 = getResult2.GetObject<ProtoBufPerson>();
 
             testPerson.Id.ShouldEqual(testPerson2.Id);
             testPerson.Name.ShouldEqual(testPerson2.Name);

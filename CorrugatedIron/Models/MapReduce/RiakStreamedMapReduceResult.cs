@@ -26,13 +26,11 @@ namespace CorrugatedIron.Models.MapReduce
     {
         private readonly IEnumerable<RiakMapReduceResultPhase> _responseReader;
 
-        internal RiakStreamedMapReduceResult(IObservable<RiakResult<RpbMapRedResp>> responseReader)
+        internal RiakStreamedMapReduceResult(IObservable<RpbMapRedResp> responseReader)
         {
             _responseReader = responseReader
+                .Select(item => new RiakMapReduceResultPhase(item.phase, new List<RpbMapRedResp> { item }))
                 .ToEnumerable()
-                .Select(item => item.IsSuccess
-                    ? new RiakMapReduceResultPhase(item.Value.phase, new List<RpbMapRedResp> { item.Value })
-                    : new RiakMapReduceResultPhase())
                 .ToList();
         }
 

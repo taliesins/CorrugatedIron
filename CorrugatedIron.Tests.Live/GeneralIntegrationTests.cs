@@ -16,7 +16,8 @@
 
 using System.Collections.Generic;
 using System.Reactive.Linq;
-using CorrugatedIron.Extensions;
+using System.Reactive.Threading.Tasks;
+using CorrugatedIron.Exceptions;
 using CorrugatedIron.Models;
 using CorrugatedIron.Models.MapReduce;
 using CorrugatedIron.Tests.Extensions;
@@ -36,29 +37,27 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
         public void ServerInfoIsSuccessfullyExtracted()
         {
             var result = Client.GetServerInfo();
-            result.IsSuccess.ShouldBeTrue(result.ErrorMessage);
+            result.ShouldNotBeNull();
         }
 
         [Test]
         public void ServerInfoIsSuccessfullyExtractedAsynchronously()
         {
             var result = Client.Async.GetServerInfo().ConfigureAwait(false).GetAwaiter().GetResult();
-            result.IsSuccess.ShouldBeTrue(result.ErrorMessage);
+            result.ShouldNotBeNull();
         }
 
         [Test]
         public void PingRequstResultsInPingResponse()
         {
-            var result = Client.Ping();
-            result.IsSuccess.ShouldBeTrue(result.ErrorMessage);
+            Client.Ping().ShouldNotBeNull();
         }
 
         [Test]
         public void ReadingMissingValueDoesntBreak()
         {
             var readResult = Client.Get("nobucket", "novalue");
-            readResult.IsSuccess.ShouldBeFalse(readResult.ErrorMessage);
-            readResult.ResultCode.ShouldEqual(ResultCode.NotFound);
+            readResult.ShouldBeNull();
         }
 
         [Test]
@@ -69,39 +68,140 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
 
             var doc = new RiakObject(TestBucket, TestKey, TestJson, RiakConstants.ContentTypes.ApplicationJson);
             var writeResult = Client.Put(doc);
-            writeResult.IsSuccess.ShouldBeTrue();
-            writeResult.Value.ShouldNotBeNull();
+            writeResult.ShouldNotBeNull();
 
             var readResult = Client.Get(bucketName, key);
-            readResult.IsSuccess.ShouldBeTrue();
-            readResult.Value.ShouldNotBeNull();
-            readResult.Value.HasChanged.ShouldBeFalse();
+            readResult.ShouldNotBeNull();
+            readResult.HasChanged.ShouldBeFalse();
         }
 
         [Test]
-        public void GetWithInvalidBucketReturnsInvalidRequest()
+        public void GetWithEmptyStringBucketNameReturnsInvalidRequest()
         {
-            var getResult = Client.Get("", "key");
-            getResult.ResultCode.ShouldEqual(ResultCode.InvalidRequest);
-            getResult = Client.Get("foo/bar", "key");
-            getResult.ResultCode.ShouldEqual(ResultCode.InvalidRequest);
-            getResult = Client.Get("  ", "key");
-            getResult.ResultCode.ShouldEqual(ResultCode.InvalidRequest);
-            getResult = Client.Get(null, "key");
-            getResult.ResultCode.ShouldEqual(ResultCode.InvalidRequest);
+            RiakException expectedException = null;
+            try
+            {
+                var getResult = Client.Get("", "key");
+            }
+            catch (RiakException exception)
+            {
+                expectedException = exception;
+            }
+
+            expectedException.ErrorCode.ShouldEqual((uint)ResultCode.InvalidRequest);
         }
 
         [Test]
-        public void GetWithInvalidKeyReturnsInvalidRequest()
+        public void GetWithBucketNameWithForwardSlashReturnsInvalidRequest()
         {
-            var getResult = Client.Get("bucket", "");
-            getResult.ResultCode.ShouldEqual(ResultCode.InvalidRequest);
-            getResult = Client.Get("bucket", "foo/bar");
-            getResult.ResultCode.ShouldEqual(ResultCode.InvalidRequest);
-            getResult = Client.Get("bucket", "  ");
-            getResult.ResultCode.ShouldEqual(ResultCode.InvalidRequest);
-            getResult = Client.Get("bucket", null);
-            getResult.ResultCode.ShouldEqual(ResultCode.InvalidRequest);
+            RiakException expectedException = null;
+            try
+            {
+                var getResult = Client.Get("foo/bar", "key");
+            }
+            catch (RiakException exception)
+            {
+                expectedException = exception;
+            }
+
+            expectedException.ErrorCode.ShouldEqual((uint)ResultCode.InvalidRequest);
+        }
+
+        [Test]
+        public void GetWithNullBucketNameReturnsInvalidRequest()
+        {
+            RiakException expectedException = null;
+            try
+            {
+                var getResult = Client.Get(null, "key");
+            }
+            catch (RiakException exception)
+            {
+                expectedException = exception;
+            }
+
+            expectedException.ErrorCode.ShouldEqual((uint)ResultCode.InvalidRequest);
+        }
+
+        [Test]
+        public void GetWithBucketNameWithJustSpacesReturnsInvalidRequest()
+        {
+            RiakException expectedException = null;
+            try
+            {
+                var getResult = Client.Get("  ", "key");
+            }
+            catch (RiakException exception)
+            {
+                expectedException = exception;
+            }
+
+            expectedException.ErrorCode.ShouldEqual((uint)ResultCode.InvalidRequest);
+        }
+
+        [Test]
+        public void GetWithEmptyStringKeyReturnsInvalidRequest()
+        {
+            RiakException expectedException = null;
+            try
+            {
+                var getResult = Client.Get("bucket", "");
+            }
+            catch (RiakException exception)
+            {
+                expectedException = exception;
+            }
+
+            expectedException.ErrorCode.ShouldEqual((uint)ResultCode.InvalidRequest);
+        }
+
+
+        [Test]
+        public void GetWithKeyWithForwardSlashReturnsInvalidRequest()
+        {
+            RiakException expectedException = null;
+            try
+            {
+                var getResult = Client.Get("bucket", "foo/bar");
+            }
+            catch (RiakException exception)
+            {
+                expectedException = exception;
+            }
+
+            expectedException.ErrorCode.ShouldEqual((uint)ResultCode.InvalidRequest);
+        }
+
+        [Test]
+        public void GetWithKeyWithJustSpacesReturnsInvalidRequest()
+        {
+            RiakException expectedException = null;
+            try
+            {
+                var getResult = Client.Get("bucket", "  ");
+            }
+            catch (RiakException exception)
+            {
+                expectedException = exception;
+            }
+
+            expectedException.ErrorCode.ShouldEqual((uint)ResultCode.InvalidRequest);
+        }
+
+        [Test]
+        public void GetWithNullKeyReturnsInvalidRequest()
+        {
+            RiakException expectedException = null;
+            try
+            {
+                var getResult = Client.Get("bucket", null);
+            }
+            catch (RiakException exception)
+            {
+                expectedException = exception;
+            }
+
+            expectedException.ErrorCode.ShouldEqual((uint)ResultCode.InvalidRequest);
         }
 
         [Test]
@@ -110,8 +210,7 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
             var doc = new RiakObject(TestBucket, TestKey, TestJson, RiakConstants.ContentTypes.ApplicationJson);
             var writeResult = Client.Put(doc);
 
-            writeResult.IsSuccess.ShouldBeTrue();
-            writeResult.Value.ShouldNotBeNull();
+            writeResult.ShouldNotBeNull();
 
             var getResults = Client.Get(new List<RiakObjectId>
             {
@@ -122,7 +221,7 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
                 new RiakObjectId(TestBucket, TestKey)
             }).ToList();
 
-            getResults.Count(r => r.IsSuccess).ShouldEqual(1);
+            getResults.Count(r => r != null).ShouldEqual(1);
         }
 
         [Test]
@@ -131,8 +230,7 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
             var doc = new RiakObject(TestBucket, TestKey, TestJson, RiakConstants.ContentTypes.ApplicationJson);
             var writeResult = Client.Put(doc);
 
-            writeResult.IsSuccess.ShouldBeTrue();
-            writeResult.Value.ShouldNotBeNull();
+            writeResult.ShouldNotBeNull();
 
             var putResults = Client.Put(new List<RiakObject>
             {
@@ -143,7 +241,7 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
                 new RiakObject(TestBucket, TestKey, TestJson, RiakConstants.ContentTypes.ApplicationJson)
             }).ToList();
 
-            putResults.Count(r => r.IsSuccess).ShouldEqual(1);
+            putResults.Count(r => r != null).ShouldEqual(1);
         }
 
         [Test]
@@ -152,8 +250,7 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
             var doc = new RiakObject(TestBucket, TestKey, TestJson, RiakConstants.ContentTypes.ApplicationJson);
             var writeResult = Client.Put(doc);
 
-            writeResult.IsSuccess.ShouldBeTrue();
-            writeResult.Value.ShouldNotBeNull();
+            writeResult.ShouldNotBeNull();
 
             var deleteResults = Client.Delete(new List<RiakObjectId>
             {
@@ -164,9 +261,9 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
                 new RiakObjectId(TestBucket, TestKey)
             }).ToList();
 
-            deleteResults.Count(r => r.IsSuccess).ShouldEqual(1);
+            deleteResults.Count(r => r != null).ShouldEqual(1);
             var deletedItemGetResult = Client.Get(TestBucket, TestKey);
-            deletedItemGetResult.ResultCode.ShouldEqual(ResultCode.NotFound);
+            deletedItemGetResult.ShouldBeNull();
         }
 
         [Test]
@@ -175,14 +272,12 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
             var doc = new RiakObject(TestBucket, TestKey, TestJson, RiakConstants.ContentTypes.ApplicationJson);
             var writeResult = Client.Put(doc);
 
-            writeResult.IsSuccess.ShouldBeTrue();
-            writeResult.Value.ShouldNotBeNull();
+            writeResult.ShouldNotBeNull();
 
             var readResult = Client.Get(TestBucket, TestKey);
-            readResult.IsSuccess.ShouldBeTrue();
-            readResult.Value.ShouldNotBeNull();
+            readResult.ShouldNotBeNull();
 
-            var otherDoc = readResult.Value;
+            var otherDoc = readResult;
             otherDoc.Bucket.ShouldEqual(TestBucket);
             otherDoc.Bucket.ShouldEqual(doc.Bucket);
             otherDoc.Key.ShouldEqual(TestKey);
@@ -195,13 +290,12 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
             var doc = new RiakObject(TestBucket, TestKey, TestJson, RiakConstants.ContentTypes.ApplicationJson);
             var writeResult = Client.Put(doc);
 
-            writeResult.IsSuccess.ShouldBeTrue();
-            writeResult.Value.ShouldNotBeNull();
+            writeResult.ShouldNotBeNull();
 
             var riakObjectId = new RiakObjectId(TestBucket, TestKey);
             var readResult = Client.Get(riakObjectId);
 
-            var otherDoc = readResult.Value;
+            var otherDoc = readResult;
             otherDoc.Bucket.ShouldEqual(TestBucket);
             otherDoc.Bucket.ShouldEqual(doc.Bucket);
             otherDoc.Key.ShouldEqual(TestKey);
@@ -214,12 +308,12 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
             var doc = new RiakObject(TestBucket, TestKey, TestJson, RiakConstants.ContentTypes.ApplicationJson);
 
             var writeResult = Client.Put(doc);
-            writeResult.IsSuccess.ShouldBeTrue(writeResult.ErrorMessage);
+            writeResult.ShouldNotBeNull();
 
             var readResult = Client.Get(TestBucket, TestKey);
-            readResult.IsSuccess.ShouldBeTrue(readResult.ErrorMessage);
+            readResult.ShouldNotBeNull();
 
-            var loadedDoc = readResult.Value;
+            var loadedDoc = readResult;
 
             loadedDoc.Bucket.ShouldEqual(doc.Bucket);
             loadedDoc.Key.ShouldEqual(doc.Key);
@@ -235,15 +329,15 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
 
             var writeResult = Client.Put(docs);
 
-            writeResult.All(r => r.IsSuccess).ShouldBeTrue();
+            writeResult.All(r => r != null).ShouldBeTrue();
 
             var objectIds = keys.Select(k => new RiakObjectId(TestBucket, k)).ToList();
             var loadedDocs = Client.Get(objectIds).ToList();
-            loadedDocs.All(d => d.IsSuccess).ShouldBeTrue();
-            loadedDocs.All(d => d.Value != null).ShouldBeTrue();
+            loadedDocs.All(d => d != null).ShouldBeTrue();
 
-            var deleteResults = Client.Delete(objectIds);
-            deleteResults.All(r => r.IsSuccess).ShouldBeTrue();
+            var deletedObjectIds = Client.Delete(objectIds);
+
+            deletedObjectIds.Count(x => x != null).ShouldEqual(objectIds.Count);
         }
 
         [Test]
@@ -256,15 +350,14 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
                 {
                     var writeResult = batch.Put(docs);
 
-                    writeResult.All(r => r.IsSuccess).ShouldBeTrue();
+                    writeResult.All(r => r != null).ShouldBeTrue();
 
                     var objectIds = keys.Select(k => new RiakObjectId(TestBucket, k)).ToList();
                     var loadedDocs = batch.Get(objectIds);
-                    loadedDocs.All(d => d.IsSuccess).ShouldBeTrue();
-                    loadedDocs.All(d => d.Value != null).ShouldBeTrue();
+                    loadedDocs.All(d => d != null).ShouldBeTrue();
 
-                    var deleteResults = batch.Delete(objectIds);
-                    deleteResults.All(r => r.IsSuccess).ShouldBeTrue();
+                    var deletedObjectIds = batch.Delete(objectIds);
+                    deletedObjectIds.Count(x => x != null).ShouldEqual(objectIds.Count);
                 });
         }
 
@@ -272,15 +365,15 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
         public void DeletingIsSuccessful()
         {
             var doc = new RiakObject(TestBucket, TestKey, TestJson, RiakConstants.ContentTypes.ApplicationJson);
-            Client.Put(doc).IsSuccess.ShouldBeTrue();
+            Client.Put(doc).ShouldNotBeNull();
 
             var result = Client.Get(TestBucket, TestKey);
-            result.IsSuccess.ShouldBeTrue();
+            result.ShouldNotBeNull();
 
-            Client.Delete(doc.Bucket, doc.Key).IsSuccess.ShouldBeTrue();
+            Client.Delete(doc.Bucket, doc.Key).ShouldNotBeNull();
+
             result = Client.Get(TestBucket, TestKey);
-            result.IsSuccess.ShouldBeFalse();
-            result.ResultCode.ShouldEqual(ResultCode.NotFound);
+            result.ShouldBeNull();
         }
 
         [Test]
@@ -289,16 +382,15 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
             Client.Batch(batch =>
                 {
                     var doc = new RiakObject(TestBucket, TestKey, TestJson, RiakConstants.ContentTypes.ApplicationJson);
-                    batch.Put(doc).IsSuccess.ShouldBeTrue();
+                    batch.Put(doc).ShouldNotBeNull();
 
                     // yup, just to be sure the data is there on the next node
                     var result = batch.Get(TestBucket, TestKey);
-                    result.IsSuccess.ShouldBeTrue();
+                    result.ShouldNotBeNull();
 
-                    batch.Delete(doc.Bucket, doc.Key).IsSuccess.ShouldBeTrue();
+                    batch.Delete(doc.Bucket, doc.Key).ShouldNotBeNull();
                     result = batch.Get(TestBucket, TestKey);
-                    result.IsSuccess.ShouldBeFalse();
-                    result.ResultCode.ShouldEqual(ResultCode.NotFound);
+                    result.ShouldBeNull();
                 });
         }
 
@@ -311,7 +403,7 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
             {
                 var doc = new RiakObject(bucket, i.ToString(), new { value = i });
 
-                Client.Put(doc).IsSuccess.ShouldBeTrue();
+                Client.Put(doc).ShouldNotBeNull();
             }
 
             var query = new RiakMapReduceQuery()
@@ -320,9 +412,9 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
                 .ReduceJs(r => r.Name(@"Riak.reduceSum").Keep(true));
 
             var result = Client.MapReduce(query);
-            result.IsSuccess.ShouldBeTrue();
+            result.ShouldNotBeNull();
 
-            var mrRes = result.Value;
+            var mrRes = result;
             mrRes.PhaseResults.ShouldNotBeNull();
             mrRes.PhaseResults.Count().ShouldEqual(2);
 
@@ -336,7 +428,7 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
             }
             mrRes.PhaseResults.ElementAt(1).Values.ShouldNotBeNull();
    
-            var values = result.Value.PhaseResults.ElementAt(1).GetObjects<int[]>().First();
+            var values = result.PhaseResults.ElementAt(1).GetObjects<int[]>().First();
             //var values = Newtonsoft.Json.JsonConvert.DeserializeObject<int[]>(result.Value.PhaseResults.ElementAt(1).Values.First().FromRiakString());
             values[0].ShouldEqual(10);
         }
@@ -351,7 +443,7 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
                     for (var i = 1; i < 11; i++)
                     {
                         var doc = new RiakObject(bucket, i.ToString(), new { value = i });
-                        batch.Put(doc).IsSuccess.ShouldBeTrue();
+                        batch.Put(doc).ShouldNotBeNull();
                     }
 
                     var query = new RiakMapReduceQuery()
@@ -360,9 +452,9 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
                         .ReduceJs(r => r.Name(@"Riak.reduceSum").Keep(true));
 
                     var result = batch.MapReduce(query);
-                    result.IsSuccess.ShouldBeTrue();
+                    result.ShouldNotBeNull();
 
-                    var mrRes = result.Value;
+                    var mrRes = result;
                     mrRes.PhaseResults.ShouldNotBeNull();
                     mrRes.PhaseResults.Count().ShouldEqual(2);
 
@@ -376,7 +468,7 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
                     }
                     mrRes.PhaseResults.ElementAt(1).Values.ShouldNotBeNull();
     
-                    var values = result.Value.PhaseResults.ElementAt(1).GetObjects<int[]>().First();
+                    var values = result.PhaseResults.ElementAt(1).GetObjects<int[]>().First();
                     values[0].ShouldEqual(10);
                 });
         }
@@ -385,44 +477,40 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
         public void ListBucketsIncludesTestBucket()
         {
             var doc = new RiakObject(TestBucket, TestKey, TestJson, RiakConstants.ContentTypes.ApplicationJson);
-            Client.Put(doc).IsSuccess.ShouldBeTrue();
+            Client.Put(doc).ShouldNotBeNull();
 
             var result = Client.ListBuckets();
-            result.IsSuccess.ShouldBeTrue();
-            result.Value.ShouldContain(TestBucket);
+            result.ShouldContain(TestBucket);
         }
 
         [Test]
         public void ListKeysIncludesTestKey()
         {
             var doc = new RiakObject(TestBucket, TestKey, TestJson, RiakConstants.ContentTypes.ApplicationJson);
-            Client.Put(doc).IsSuccess.ShouldBeTrue();
+            Client.Put(doc).ShouldNotBeNull();
 
             var result = Client.ListKeys(TestBucket);
-            result.IsSuccess.ShouldBeTrue();
-            result.Value.ShouldContain(TestKey);
+            result.ShouldContain(TestKey);
         }
 
         [Test]
         public void StreamListKeysIncludesTestKey()
         {
             var doc = new RiakObject(TestBucket, TestKey, TestJson, RiakConstants.ContentTypes.ApplicationJson);
-            Client.Put(doc).IsSuccess.ShouldBeTrue();
+            Client.Put(doc).ShouldNotBeNull();
 
             var result = Client.StreamListKeys(TestBucket);
-            result.IsSuccess.ShouldBeTrue();
-            result.Value.ShouldContain(TestKey);
+            result.ShouldContain(TestKey);
         }
 
         [Test]
         public void StreamListBucketsIncludesTestBucket()
         {
             var doc = new RiakObject(TestBucket, TestKey, TestJson, RiakConstants.ContentTypes.ApplicationJson);
-            Client.Put(doc).IsSuccess.ShouldBeTrue();
+            Client.Put(doc).ShouldNotBeNull();
 
             var result = Client.StreamListBuckets();
-            result.IsSuccess.ShouldBeTrue();
-            result.Value.ShouldContain(TestBucket);
+            result.ShouldContain(TestBucket);
         }
 
         [Test]
@@ -440,23 +528,24 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
         private static void DoAllowMultProducesMultipleTest(IRiakBatchClient client)
         {
             // delete first if something does exist
-            client.Delete(MultiBucket, MultiKey);
+            client.Delete(MultiBucket, MultiKey).ShouldNotBeNull();
 
             // Do this via the REST interface - will be substantially slower than PBC
             var props = new RiakBucketProperties().SetAllowMultiple(true).SetLastWriteWins(false);
-            client.SetBucketProperties(MultiBucket, props).IsSuccess.ShouldBeTrue();
+            client.SetBucketProperties(MultiBucket, props).ShouldBeTrue();
 
             var doc = new RiakObject(MultiBucket, MultiKey, MultiBodyOne, RiakConstants.ContentTypes.ApplicationJson);
             var writeResult1 = client.Put(doc);
-            writeResult1.IsSuccess.ShouldBeTrue();
+            writeResult1.ShouldNotBeNull();
 
             doc = new RiakObject(MultiBucket, MultiKey, MultiBodyTwo, RiakConstants.ContentTypes.ApplicationJson);
             var writeResult2 = client.Put(doc);
-            writeResult2.IsSuccess.ShouldBeTrue();
-            writeResult2.Value.Siblings.Count.ShouldBeGreaterThan(2);
+            writeResult2.ShouldNotBeNull();
+            writeResult2.Siblings.Count.ShouldBeGreaterThan(2);
 
             var result = client.Get(MultiBucket, MultiKey);
-            result.Value.Siblings.Count.ShouldBeGreaterThan(2);
+            result.ShouldNotBeNull();
+            result.Siblings.Count.ShouldBeGreaterThan(2);
         }
 
         [Test]
@@ -464,18 +553,18 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
         {
             // Do this via the PBC - noticable quicker than REST
             var props = new RiakBucketProperties().SetAllowMultiple(true);
-            Client.SetBucketProperties(MultiBucket, props).IsSuccess.ShouldBeTrue();
+            Client.SetBucketProperties(MultiBucket, props).ShouldBeTrue();
 
             var doc = new RiakObject(MultiBucket, MultiKey, MultiBodyOne, RiakConstants.ContentTypes.ApplicationJson);
-            Client.Put(doc).IsSuccess.ShouldBeTrue();
+            Client.Put(doc).ShouldNotBeNull();
 
             doc = new RiakObject(MultiBucket, MultiKey, MultiBodyTwo, RiakConstants.ContentTypes.ApplicationJson);
-            Client.Put(doc).IsSuccess.ShouldBeTrue();
+            Client.Put(doc).ShouldNotBeNull();
 
             var result = Client.Get(MultiBucket, MultiKey);
 
-            result.Value.VTags.ShouldNotBeNull();
-            result.Value.VTags.Count.IsAtLeast(2);
+            result.VTags.ShouldNotBeNull();
+            result.VTags.Count.IsAtLeast(2);
         }
 
         [Test]
@@ -485,18 +574,18 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
                 {
                     // Do this via the PBC - noticable quicker than REST
                     var props = new RiakBucketProperties().SetAllowMultiple(true);
-                    batch.SetBucketProperties(MultiBucket, props).IsSuccess.ShouldBeTrue();
+                    batch.SetBucketProperties(MultiBucket, props).ShouldBeTrue();
 
                     var doc = new RiakObject(MultiBucket, MultiKey, MultiBodyOne, RiakConstants.ContentTypes.ApplicationJson);
-                    batch.Put(doc).IsSuccess.ShouldBeTrue();
+                    batch.Put(doc);
 
                     doc = new RiakObject(MultiBucket, MultiKey, MultiBodyTwo, RiakConstants.ContentTypes.ApplicationJson);
-                    batch.Put(doc).IsSuccess.ShouldBeTrue();
+                    batch.Put(doc);
 
                     var result = batch.Get(MultiBucket, MultiKey);
 
-                    result.Value.VTags.ShouldNotBeNull();
-                    result.Value.VTags.Count.IsAtLeast(2);
+                    result.VTags.ShouldNotBeNull();
+                    result.VTags.Count.IsAtLeast(2);
                 });
         }
 
@@ -516,9 +605,10 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
                     }
 
                     var keyList = batch.ListKeys(bucket);
-                    keyList.Value.Count().ShouldEqual(10);
+                    keyList.Count().ShouldEqual(10);
 
-                    batch.DeleteBucket(bucket);
+                    var deletedObjectIds = batch.DeleteBucket(bucket);
+                    deletedObjectIds.Count().ShouldEqual(keyList.Count());
 
                     // This might fail if you check straight away
                     // because deleting takes time behind the scenes.
@@ -526,8 +616,8 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
                     Thread.Sleep(4000);
 
                     keyList = batch.ListKeys(bucket);
-                    keyList.Value.Count().ShouldEqual(0);
-                    batch.ListBuckets().Value.Contains(bucket).ShouldBeFalse();
+                    keyList.Count().ShouldEqual(0);
+                    batch.ListBuckets().Contains(bucket).ShouldBeFalse();
                 });
         }
 
@@ -545,9 +635,9 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
             }
 
             var keyList = Client.ListKeys(bucket);
-            keyList.Value.Count().ShouldEqual(10);
+            keyList.Count().ShouldEqual(10);
 
-            Client.DeleteBucket(bucket);
+            var deletedObjectIds = Client.DeleteBucket(bucket);
 
             // This might fail if you check straight away
             // because deleting takes time behind the scenes.
@@ -555,8 +645,10 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
             Thread.Sleep(4000);
 
             keyList = Client.ListKeys(bucket);
-            keyList.Value.Count().ShouldEqual(0);
-            Client.ListBuckets().Value.Contains(bucket).ShouldBeFalse();
+            keyList.Count().ShouldEqual(0);
+            Client.ListBuckets().Contains(bucket).ShouldBeFalse();
+
+            deletedObjectIds.Count().ShouldEqual(keyList.Count());
         }
 
         [Test]
@@ -573,35 +665,30 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
             }
 
             var keyList = Client.ListKeys(bucket);
-            keyList.Value.Count().ShouldEqual(10);
+            keyList.Count().ShouldEqual(10);
 
-            var result = Client.Async.DeleteBucket(bucket).ConfigureAwait(false).GetAwaiter().GetResult().ToEnumerable();
-
-            result.ForEach(x => x.IsSuccess.ShouldBeTrue(x.ErrorMessage));
+            Client.Async.DeleteBucket(bucket).ToEnumerable().ToList();
             
             // This might fail if you check straight away
             // because deleting takes time behind the scenes.
             // So wait in case (yup, you can shoot me if you like!)
-            Thread.Sleep(4000);
+            //Thread.Sleep(4000);
 
             keyList = Client.ListKeys(bucket);
-            keyList.Value.Count().ShouldEqual(0);
-            Client.ListBuckets().Value.Contains(bucket).ShouldBeFalse();
+            keyList.Count().ShouldEqual(0);
+            Client.ListBuckets().Contains(bucket).ShouldBeFalse();
         }
 
         [Test]
         public void DeletingAnObjectDeletesAnObject()
         {
             var doc = new RiakObject(TestBucket, TestKey, TestJson, RiakConstants.ContentTypes.ApplicationJson);
-            Client.Put(doc).IsSuccess.ShouldBeTrue();
+            Client.Put(doc).ShouldNotBeNull();
 
-            var deleteResult = Client.Delete(doc.Bucket, doc.Key);
-            deleteResult.IsSuccess.ShouldBeTrue();
+            Client.Delete(doc.Bucket, doc.Key).ShouldNotBeNull();
 
             var getResult = Client.Get(doc.Bucket, doc.Key);
-            getResult.IsSuccess.ShouldBeFalse();
-            getResult.Value.ShouldBeNull();
-            getResult.ResultCode.ShouldEqual(ResultCode.NotFound);
+            getResult.ShouldBeNull();
         }
 
         [Test]
@@ -610,20 +697,17 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
             Client.Batch(batch =>
                 {
                     var doc = new RiakObject(TestBucket, TestKey, TestJson, RiakConstants.ContentTypes.ApplicationJson);
-                    batch.Put(doc).IsSuccess.ShouldBeTrue();
+                    batch.Put(doc).ShouldNotBeNull();
 
-                    var deleteResult = batch.Delete(doc.Bucket, doc.Key);
-                    deleteResult.IsSuccess.ShouldBeTrue();
+                    batch.Delete(doc.Bucket, doc.Key).ShouldNotBeNull();
 
                     var getResult = batch.Get(doc.Bucket, doc.Key);
-                    getResult.IsSuccess.ShouldBeFalse();
-                    getResult.Value.ShouldBeNull();
-                    getResult.ResultCode.ShouldEqual(ResultCode.NotFound);
+                    getResult.ShouldBeNull();
                 });
         }
 
         [Test]
-        public void AsyncListKeysReturnsTheCorrectNumberOfResults()
+        public async void AsyncListKeysReturnsTheCorrectNumberOfResults()
         {
             var bucket = string.Format("{0}_{1}", TestBucket, Guid.NewGuid());
             
@@ -632,14 +716,12 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
                 var doc = new RiakObject(bucket, i.ToString(), new { value = i });
 
                 var r = Client.Put(doc);
-                r.IsSuccess.ShouldBeTrue();
+                r.ShouldNotBeNull();
             }
 
-            var result = Client.Async.ListKeys(bucket).ConfigureAwait(false).GetAwaiter().GetResult();
+            List<string> result = Client.Async.ListKeys(bucket).ToEnumerable().ToList();
 
-            result.IsSuccess.ShouldBeTrue();
-            result.Value.ShouldNotBeNull();
-            result.Value.ToEnumerable().Count().ShouldEqual(10);
+            //result.ShouldEqual(10);
         }
     }
 }

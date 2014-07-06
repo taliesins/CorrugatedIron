@@ -14,75 +14,44 @@
 // specific language governing permissions and limitations
 // under the License.
 
-using System.Threading.Tasks;
 using CorrugatedIron.Comms.Sockets;
 using CorrugatedIron.Config;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using CorrugatedIron.Extensions;
 
 namespace CorrugatedIron.Comms
 {
     internal class RiakConnectionPool : IRiakConnectionManager
     {
-        private readonly List<IRiakConnection> _allResources;
-        private readonly BlockingCollection<IRiakConnection> _resources;
+        private readonly List<RiakPbcSocket> _allResources;
+        private readonly BlockingCollection<RiakPbcSocket> _resources;
+        private readonly string _serverUrl;
         private bool _disposing;
 
-        public RiakConnectionPool(IRiakNodeConfiguration nodeConfig, IRiakConnectionFactory connFactory)
+        public RiakConnectionPool(IRiakNodeConfiguration nodeConfig)
         {
             var poolSize = nodeConfig.PoolSize;
             var pool = new SocketAwaitablePool(nodeConfig.PoolSize);
             var bufferManager = new BlockingBufferManager(nodeConfig.BufferSize, nodeConfig.PoolSize);
-
-            _allResources = new List<IRiakConnection>();
-            
+            _serverUrl = @"{0}://{1}:{2}".Fmt(nodeConfig.RestScheme, nodeConfig.HostAddress, nodeConfig.RestPort);
+            _allResources = new List<RiakPbcSocket>();
 
             for(var i = 0; i < poolSize; ++i)
             {
-                var conn = connFactory.CreateConnection(nodeConfig, pool, bufferManager);
-                _allResources.Add(conn);
+                var socket = new RiakPbcSocket(
+                    nodeConfig.HostAddress,
+                    nodeConfig.PbcPort,
+                    nodeConfig.NetworkReadTimeout,
+                    nodeConfig.NetworkWriteTimeout,
+                    pool,
+                    bufferManager);
+
+                _allResources.Add(socket);
             }
 
-            _resources = new BlockingCollection<IRiakConnection>(new ConcurrentQueue<IRiakConnection>(_allResources));
-        }
-
-        public Tuple<bool, Task<TResult>> Consume<TResult>(Func<IRiakConnection, Task<TResult>> consumer)
-        {
-            if (_disposing) return Tuple.Create<bool, Task<TResult>>(false, null);
-
-            IRiakConnection instance = null;
-            try
-            {
-                if (_resources.TryTake(out instance, -1))
-                {
-                    Func<Task<TResult>, TResult> cleanup = (task) =>
-                    {
-                        var r = task.ConfigureAwait(false).GetAwaiter().GetResult();
-
-                        var i = instance;
-                        instance = null;
-                        _resources.Add(i);
-
-                        return r;
-                    };
-
-                    var result = consumer(instance)
-                        .ContinueWith(cleanup);
-
-                    return Tuple.Create(true, result);
-                }
-            }
-            catch(Exception)
-            {
-                if(instance != null)
-                {
-                    _resources.Add(instance);
-                }
-                return Tuple.Create<bool, Task<TResult>>(false, null);
-            }
-
-            return Tuple.Create<bool, Task<TResult>>(false, null);
+            _resources = new BlockingCollection<RiakPbcSocket>(new ConcurrentQueue<RiakPbcSocket>(_allResources));
         }
 
         public void Dispose()
@@ -95,6 +64,37 @@ namespace CorrugatedIron.Comms
             {
                 conn.Dispose();
             }
+        }
+
+        public string CreateServerUrl()
+        {
+            return _serverUrl;
+        }
+
+        public void Release(string serverUrl)
+        {
+        }
+
+        public RiakPbcSocket CreateSocket()
+        {
+            if (_disposing) throw new ObjectDisposedException(this.GetType().Name);
+
+            RiakPbcSocket socket = null;
+
+            if (_resources.TryTake(out socket, -1))
+            {
+                return socket;
+            }
+
+            throw new TimeoutException("Unable to create socket");
+ 
+        }
+
+        public void Release(RiakPbcSocket socket)
+        {
+            if (_disposing) return;
+
+            _resources.Add(socket);
         }
     }
 }

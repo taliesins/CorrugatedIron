@@ -17,69 +17,136 @@
 using System.Threading.Tasks;
 using CorrugatedIron.Config;
 using System;
-using System.Collections.Generic;
 
 namespace CorrugatedIron.Comms
 {
     public class RiakNode : IRiakNode
     {
-        private readonly IRiakConnectionManager _connections;
-        private bool _disposing;
+        private readonly IRiakConnectionManager _connectionManager;
 
-        public RiakNode(IRiakNodeConfiguration nodeConfiguration, IRiakConnectionFactory connectionFactory)
+        public RiakNode(IRiakNodeConfiguration nodeConfiguration)
         {
             // assume that if the node has a pool size of 0 then the intent is to have the connections
             // made on the fly
             if (nodeConfiguration.PoolSize == 0)
             {
-                _connections = new RiakOnTheFlyConnection(nodeConfiguration, connectionFactory);
+                _connectionManager = new RiakOnTheFlyConnection(nodeConfiguration);
             }
             else
             {
-                _connections = new RiakConnectionPool(nodeConfiguration, connectionFactory);
+                _connectionManager = new RiakConnectionPool(nodeConfiguration);
             }
         }
 
-        public async Task<RiakResult> UseConnection(Func<IRiakConnection, Task<RiakResult>> useFun)
+        public RiakPbcSocket CreateSocket()
         {
-            if (_disposing) return RiakResult.Error(ResultCode.ShuttingDown, "Connection is shutting down", true);
-
-            var response = _connections.Consume(useFun);
-            if (response.Item1)
-            {
-                return await response.Item2;
-            }
-            return RiakResult.Error(ResultCode.NoConnections, "Unable to acquire connection", true);
+            return _connectionManager.CreateSocket();
         }
 
-        public async Task<RiakResult<TResult>> UseConnection<TResult>(Func<IRiakConnection, Task<RiakResult<TResult>>> useFun)
+        public void Release(RiakPbcSocket socket)
         {
-            if (_disposing) return RiakResult<TResult>.Error(ResultCode.ShuttingDown, "Connection is shutting down", true);
-
-            var response = _connections.Consume(useFun);
-            if (response.Item1)
-            {
-                return await response.Item2;
-            }
-            return RiakResult<TResult>.Error(ResultCode.NoConnections, "Unable to acquire connection", true);
+            _connectionManager.Release(socket);
         }
 
-        public async Task<RiakResult<IEnumerable<TResult>>> UseConnection<TResult>(Func<IRiakConnection, Task<RiakResult<IEnumerable<TResult>>>> useFun)
+        public async Task GetSingleResultViaPbc(Func<RiakPbcSocket, Task> useFun)
         {
-            if (_disposing) return RiakResult<IEnumerable<TResult>>.Error(ResultCode.ShuttingDown, "Connection is shutting down", true);
-
-            var response = _connections.Consume(useFun);
-            if (response.Item1)
+            var socket = _connectionManager.CreateSocket();
+            try
             {
-                return await response.Item2;
+                await useFun(socket);
             }
-            return RiakResult<IEnumerable<TResult>>.Error(ResultCode.NoConnections, "Unable to acquire connection", true);
+            finally
+            {
+                _connectionManager.Release(socket);
+            }
+        }
+
+        public async Task GetSingleResultViaPbc(RiakPbcSocket socket, Func<RiakPbcSocket, Task> useFun)
+        {
+            await useFun(socket).ConfigureAwait(false);
+        }
+
+        public async Task<TResult> GetSingleResultViaPbc<TResult>(Func<RiakPbcSocket, Task<TResult>> useFun)
+        {
+            var socket = _connectionManager.CreateSocket();
+            try
+            {
+                var result = await useFun(socket).ConfigureAwait(false);
+                return result;
+            }
+            finally
+            {
+                _connectionManager.Release(socket);
+            }
+        }
+
+        public async Task<TResult> GetSingleResultViaPbc<TResult>(RiakPbcSocket socket, Func<RiakPbcSocket, Task<TResult>> useFun)
+        {
+            var result = await useFun(socket).ConfigureAwait(false);
+            return result;
+        }
+
+        public async Task GetMultipleResultViaPbc(Action<RiakPbcSocket> useFun)
+        {
+            var socket = _connectionManager.CreateSocket();
+            try
+            {
+                useFun(socket);
+            }
+            finally
+            {
+                _connectionManager.Release(socket);
+            }
+        }
+
+        public async Task GetMultipleResultViaPbc(RiakPbcSocket socket, Action<RiakPbcSocket> useFun)
+        {
+            useFun(socket);
+        }
+
+        public async Task GetSingleResultViaRest(Func<string, Task> useFun)
+        {
+            var serverUrl = _connectionManager.CreateServerUrl();
+            try
+            {
+                await useFun(serverUrl).ConfigureAwait(false);
+            }
+            finally
+            {
+                _connectionManager.Release(serverUrl);
+            }
+        }
+
+        public async Task<TResult> GetSingleResultViaRest<TResult>(Func<string, Task<TResult>> useFun)
+        {
+            var serverUrl = _connectionManager.CreateServerUrl();
+            try
+            {
+                var result = await useFun(serverUrl).ConfigureAwait(false);
+                return result;
+            }
+            finally
+            {
+                _connectionManager.Release(serverUrl);
+            }
+        }
+
+        public async Task GetMultipleResultViaRest(Action<string> useFun)
+        {
+            var serverUrl = _connectionManager.CreateServerUrl();
+            try
+            {
+                useFun(serverUrl);
+            }
+            finally
+            {
+                _connectionManager.Release(serverUrl);
+            }
         }
 
         public void Dispose()
         {
-            _disposing = true;
-            _connections.Dispose();
+            _connectionManager.Dispose();
         }
     }
 }
