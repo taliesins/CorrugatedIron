@@ -19,6 +19,7 @@ using System.Linq;
 using System.Net;
 using System.Numerics;
 using System.Reactive;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Web;
 using CorrugatedIron.Comms;
@@ -195,11 +196,13 @@ namespace CorrugatedIron
                     }
 
                     obs.OnCompleted();
+                    
                 }
                 catch (Exception exception)
                 {
                     obs.OnError(exception);
                 }
+                return Disposable.Empty;
             });
            
             return observable;
@@ -306,6 +309,7 @@ namespace CorrugatedIron
                 {
                     obs.OnError(exception);
                 }
+                return Disposable.Empty;
             });
 
             return observables;
@@ -408,6 +412,7 @@ namespace CorrugatedIron
                 {
                     obs.OnError(exception);
                 }
+                return Disposable.Empty;
             });
 
             return observables;
@@ -478,6 +483,7 @@ namespace CorrugatedIron
                 {
                     obs.OnError(exception);
                 }
+                return Disposable.Empty;
             });
 
             return observable;
@@ -751,6 +757,7 @@ namespace CorrugatedIron
                 {
                     obs.OnError(exception);
                 }
+                return Disposable.Empty;
             });
 
             return observables;
@@ -811,6 +818,7 @@ namespace CorrugatedIron
                 {
                     obs.OnError(exception);
                 }
+                return Disposable.Empty;
             });
 
             return observables;

@@ -14,6 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
@@ -117,6 +118,7 @@ namespace CorrugatedIron.Comms
                         observer.OnError(exception);
                     }
                 }).ConfigureAwait(false);
+                return Disposable.Empty;
             });
 
             return pbcStreamReadIterator;
@@ -258,6 +260,7 @@ namespace CorrugatedIron.Comms
                         observer.OnError(exception);
                     }
                 }).ConfigureAwait(false);
+                return Disposable.Empty;
             });
 
             return pbcStreamReadIterator;
@@ -305,7 +308,7 @@ namespace CorrugatedIron.Comms
                         observer.OnError(exception);
                     }
                 }).ConfigureAwait(false);
-                
+                return Disposable.Empty;
             });
 
             return pbcStreamWriteReadIterator;
@@ -343,6 +346,7 @@ namespace CorrugatedIron.Comms
                         observer.OnError(exception);
                     }
                 }).ConfigureAwait(false);
+                return Disposable.Empty;
             });
 
             return pbcStreamWriteReadIterator;
