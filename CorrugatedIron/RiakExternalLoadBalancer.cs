@@ -79,7 +79,7 @@ namespace CorrugatedIron
 
             if (riakEndPointContext.Socket == null)
             {
-                riakEndPointContext.Socket = riakEndPointContext.Node.CreateSocket();
+                riakEndPointContext.Socket = await riakEndPointContext.Node.CreateSocket();
             }
 
             await riakEndPointContext.Node.GetSingleResultViaPbc(riakEndPointContext.Socket, useFun).ConfigureAwait(false);
@@ -111,7 +111,7 @@ namespace CorrugatedIron
 
             if (riakEndPointContext.Socket == null)
             {
-                riakEndPointContext.Socket = riakEndPointContext.Node.CreateSocket();
+                riakEndPointContext.Socket = await riakEndPointContext.Node.CreateSocket();
             }
 
             var result = await riakEndPointContext.Node.GetSingleResultViaPbc(riakEndPointContext.Socket, useFun).ConfigureAwait(false);
@@ -142,7 +142,7 @@ namespace CorrugatedIron
 
             if (riakEndPointContext.Socket == null)
             {
-                riakEndPointContext.Socket = riakEndPointContext.Node.CreateSocket();
+                riakEndPointContext.Socket = await riakEndPointContext.Node.CreateSocket();
             }
 
             await riakEndPointContext.Node.GetMultipleResultViaPbc(riakEndPointContext.Socket, useFun).ConfigureAwait(false);

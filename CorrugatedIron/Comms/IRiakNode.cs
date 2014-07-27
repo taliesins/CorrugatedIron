@@ -5,8 +5,8 @@ namespace CorrugatedIron.Comms
 {
     public interface IRiakNode : IDisposable
     {   
-        RiakPbcSocket CreateSocket();
-        void Release(RiakPbcSocket socket);
+        Task<RiakPbcSocket> CreateSocket();
+        Task Release(RiakPbcSocket socket);
 
         Task GetSingleResultViaPbc(Func<RiakPbcSocket, Task> useFun);
         Task<TResult> GetSingleResultViaPbc<TResult>(Func<RiakPbcSocket, Task<TResult>> useFun);

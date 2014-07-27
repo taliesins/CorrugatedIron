@@ -14,6 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+using System.Runtime.ExceptionServices;
 using System.Threading.Tasks;
 using CorrugatedIron.Config;
 using System;
@@ -38,26 +39,35 @@ namespace CorrugatedIron.Comms
             }
         }
 
-        public RiakPbcSocket CreateSocket()
+        public async Task<RiakPbcSocket> CreateSocket()
         {
-            return _connectionManager.CreateSocket();
+            return await _connectionManager.CreateSocket().ConfigureAwait(false);
         }
 
-        public void Release(RiakPbcSocket socket)
+        public async Task Release(RiakPbcSocket socket)
         {
-            _connectionManager.Release(socket);
+            await _connectionManager.Release(socket).ConfigureAwait(false);
         }
 
         public async Task GetSingleResultViaPbc(Func<RiakPbcSocket, Task> useFun)
         {
-            var socket = _connectionManager.CreateSocket();
+            RiakPbcSocket socket = null;
+            ExceptionDispatchInfo capturedException = null;
             try
             {
-                await useFun(socket);
+                socket = await _connectionManager.CreateSocket().ConfigureAwait(false);
+                await useFun(socket).ConfigureAwait(false);
             }
-            finally
+            catch (Exception ex)
             {
-                _connectionManager.Release(socket);
+                capturedException = ExceptionDispatchInfo.Capture(ex);
+            }
+
+            await _connectionManager.Release(socket).ConfigureAwait(false);
+
+            if (capturedException != null)
+            {
+                capturedException.Throw();
             }
         }
 
@@ -68,16 +78,27 @@ namespace CorrugatedIron.Comms
 
         public async Task<TResult> GetSingleResultViaPbc<TResult>(Func<RiakPbcSocket, Task<TResult>> useFun)
         {
-            var socket = _connectionManager.CreateSocket();
+            TResult result = default(TResult);
+            RiakPbcSocket socket = null;
+            ExceptionDispatchInfo capturedException = null;
             try
             {
-                var result = await useFun(socket).ConfigureAwait(false);
-                return result;
+                socket = await _connectionManager.CreateSocket().ConfigureAwait(false);
+                result = await useFun(socket).ConfigureAwait(false);
             }
-            finally
+            catch (Exception ex)
             {
-                _connectionManager.Release(socket);
+                capturedException = ExceptionDispatchInfo.Capture(ex);
             }
+
+            await _connectionManager.Release(socket).ConfigureAwait(false);
+
+            if (capturedException != null)
+            {
+                capturedException.Throw();
+            }
+
+            return result;
         }
 
         public async Task<TResult> GetSingleResultViaPbc<TResult>(RiakPbcSocket socket, Func<RiakPbcSocket, Task<TResult>> useFun)
@@ -88,14 +109,23 @@ namespace CorrugatedIron.Comms
 
         public async Task GetMultipleResultViaPbc(Action<RiakPbcSocket> useFun)
         {
-            var socket = _connectionManager.CreateSocket();
+            RiakPbcSocket socket = null;
+            ExceptionDispatchInfo capturedException = null;
             try
             {
+                socket = await _connectionManager.CreateSocket().ConfigureAwait(false);
                 useFun(socket);
             }
-            finally
+            catch (Exception ex)
             {
-                _connectionManager.Release(socket);
+                capturedException = ExceptionDispatchInfo.Capture(ex);
+            }
+
+            await _connectionManager.Release(socket).ConfigureAwait(false);
+
+            if (capturedException != null)
+            {
+                capturedException.Throw();
             }
         }
 
@@ -106,41 +136,70 @@ namespace CorrugatedIron.Comms
 
         public async Task GetSingleResultViaRest(Func<string, Task> useFun)
         {
-            var serverUrl = _connectionManager.CreateServerUrl();
+            string serverUrl = null;
+            ExceptionDispatchInfo capturedException = null;
             try
             {
+                serverUrl = await _connectionManager.CreateServerUrl().ConfigureAwait(false);
                 await useFun(serverUrl).ConfigureAwait(false);
             }
-            finally
+            catch (Exception ex)
             {
-                _connectionManager.Release(serverUrl);
+                capturedException = ExceptionDispatchInfo.Capture(ex);
+            }
+
+            await _connectionManager.Release(serverUrl).ConfigureAwait(false);
+
+            if (capturedException != null)
+            {
+                capturedException.Throw();
             }
         }
 
         public async Task<TResult> GetSingleResultViaRest<TResult>(Func<string, Task<TResult>> useFun)
         {
-            var serverUrl = _connectionManager.CreateServerUrl();
+            TResult result = default(TResult);
+            string serverUrl = null;
+            ExceptionDispatchInfo capturedException = null;
             try
             {
-                var result = await useFun(serverUrl).ConfigureAwait(false);
-                return result;
+                serverUrl = await _connectionManager.CreateServerUrl().ConfigureAwait(false);
+                result = await useFun(serverUrl).ConfigureAwait(false);
             }
-            finally
+            catch (Exception ex)
             {
-                _connectionManager.Release(serverUrl);
+                capturedException = ExceptionDispatchInfo.Capture(ex);
             }
+
+            await _connectionManager.Release(serverUrl).ConfigureAwait(false);
+
+            if (capturedException != null)
+            {
+                capturedException.Throw();
+            }
+
+            return result;
         }
 
         public async Task GetMultipleResultViaRest(Action<string> useFun)
         {
-            var serverUrl = _connectionManager.CreateServerUrl();
+            string serverUrl = null;
+            ExceptionDispatchInfo capturedException = null;
             try
             {
+                serverUrl = await _connectionManager.CreateServerUrl().ConfigureAwait(false);
                 useFun(serverUrl);
             }
-            finally
+            catch (Exception ex)
             {
-                _connectionManager.Release(serverUrl);
+                capturedException = ExceptionDispatchInfo.Capture(ex);
+            }
+
+            await _connectionManager.Release(serverUrl).ConfigureAwait(false);
+
+            if (capturedException != null)
+            {
+                capturedException.Throw();
             }
         }
 

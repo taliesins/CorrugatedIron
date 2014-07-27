@@ -94,6 +94,7 @@
     <Compile Include="Comms\RiakOnTheFlyConnection.cs" />
     <Compile Include="Comms\RiakPbcSocket.cs" />
     <Compile Include="Comms\Sockets\BlockingBufferManager.cs" />
+    <Compile Include="Comms\Sockets\BlockingLimitedList.cs" />
     <Compile Include="Comms\Sockets\SocketAwaitable.cs" />
     <Compile Include="Comms\Sockets\SocketAwaitablePool.cs" />
     <Compile Include="Comms\Sockets\SocketAwaiter.cs" />

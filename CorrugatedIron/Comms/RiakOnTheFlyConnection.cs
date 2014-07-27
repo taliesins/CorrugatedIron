@@ -14,6 +14,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+using System.Collections.Concurrent;
+using System.Threading.Tasks;
 using CorrugatedIron.Comms.Sockets;
 using CorrugatedIron.Config;
 using CorrugatedIron.Extensions;
@@ -27,6 +29,7 @@ namespace CorrugatedIron.Comms
         private readonly BlockingBufferManager _bufferManager;
         private readonly string _serverUrl;
         private bool _disposing;
+        private readonly BlockingLimitedList<RiakPbcSocket> _resources;
 
         public RiakOnTheFlyConnection(IRiakNodeConfiguration nodeConfig, int bufferPoolSize = 20)
         {
@@ -34,6 +37,8 @@ namespace CorrugatedIron.Comms
             _serverUrl = @"{0}://{1}:{2}".Fmt(nodeConfig.RestScheme, nodeConfig.HostAddress, nodeConfig.RestPort);
             _pool = new SocketAwaitablePool(nodeConfig.PoolSize);
             _bufferManager = new BlockingBufferManager(nodeConfig.BufferSize, bufferPoolSize);
+
+            _resources = new BlockingLimitedList<RiakPbcSocket>(bufferPoolSize);
         }
 
         public void Dispose()
@@ -43,16 +48,16 @@ namespace CorrugatedIron.Comms
             _disposing = true;
         }
 
-        public string CreateServerUrl()
+        public async Task<string> CreateServerUrl()
         {
             return _serverUrl;
         }
 
-        public void Release(string serverUrl)
+        public async Task Release(string serverUrl)
         {
         }
 
-        public RiakPbcSocket CreateSocket()
+        public async Task<RiakPbcSocket> CreateSocket()
         {
             var socket = new RiakPbcSocket(
                     _nodeConfig.HostAddress,
@@ -62,12 +67,21 @@ namespace CorrugatedIron.Comms
                     _pool,
                     _bufferManager);
 
+            _resources.Enqueue(socket);
+
             return socket;
         }
 
-        public void Release(RiakPbcSocket socket)
+        public async Task Release(RiakPbcSocket socket)
         {
-            socket.Dispose();
+            _resources.Dequeue(socket);
+
+            if (_disposing) return;
+
+            if (socket != null)
+            {
+                socket.Dispose();
+            }
         }
     }
 }

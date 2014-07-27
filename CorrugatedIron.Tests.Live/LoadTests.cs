@@ -39,7 +39,7 @@ namespace CorrugatedIron.Tests.Live.LoadTests
         // connection recovery/retry across nodes is
         // functioning and the load-balancing strategies
         // are in place.
-        private const int ThreadCount = 70;
+        private const int ThreadCount = 9;
         private const int ActionCount = 30;
         //private const int ThreadCount = 1;
         //private const int ActionCount = 1;

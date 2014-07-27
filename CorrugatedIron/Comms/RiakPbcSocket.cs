@@ -32,61 +32,68 @@ namespace CorrugatedIron.Comms
     {
         private readonly int _socketConnectAttempts;
         private readonly DnsEndPoint _endPoint;
+        private readonly int _receiveTimeout;
+        private readonly int _sendTimeout;
         private readonly SocketAwaitablePool _socketAwaitablePool;
         private readonly BlockingBufferManager _blockingBufferManager;
         private static readonly Dictionary<MessageCode, Type> MessageCodeToTypeMap;
         private static readonly Dictionary<Type, MessageCode> TypeToMessageCodeMap;
 
-        private Lazy<Socket> _socket;
+        private Socket _socket;
 
-        public RiakPbcSocket(string server, int port, int receiveTimeout, int sendTimeout, SocketAwaitablePool socketAwaitablePool, BlockingBufferManager blockingBufferManager, int socketConnectAttempts=3)
+        public RiakPbcSocket(string server, int port, int receiveTimeout, int sendTimeout,
+            SocketAwaitablePool socketAwaitablePool, BlockingBufferManager blockingBufferManager,
+            int socketConnectAttempts = 3)
         {
             _endPoint = new DnsEndPoint(server, port);
+            _receiveTimeout = receiveTimeout;
+            _sendTimeout = sendTimeout;
             _socketAwaitablePool = socketAwaitablePool;
             _blockingBufferManager = blockingBufferManager;
             _socketConnectAttempts = socketConnectAttempts;
-            _socket = new Lazy<Socket>(() =>
-            {
-                var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
-                {
-                    NoDelay = true,
-                    ReceiveTimeout = receiveTimeout,
-                    SendTimeout = sendTimeout
-                };
-
-                return socket;
-            });
+            _socket = null;
         }
 
         private async Task ConnectAsync(EndPoint endPoint)
         {
-            var awaitable = _socketAwaitablePool.Take();
-            try
+            var result = SocketError.Fault;
+            for (var i = 0; i < _socketConnectAttempts; i++)
             {
-                awaitable.RemoteEndPoint = endPoint;
-
-                var result = SocketError.Fault;
-                for (var i = 0; i < _socketConnectAttempts; i++)
+                _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
                 {
-                    result = await _socket.Value.ConnectAsync(awaitable);
+                    NoDelay = true,
+                    ReceiveTimeout = _receiveTimeout,
+                    SendTimeout = _sendTimeout
+                };
+
+                var awaitable = _socketAwaitablePool.Take();
+                try
+                {
+                    awaitable.RemoteEndPoint = endPoint;
+
+                    var socketAwaitable = _socket.ConnectAsync(awaitable);
+                    
+                    result = await socketAwaitable;
 
                     if (result == SocketError.Success)
                     {
                         break;
                     }
+                    else
+                    {
+                        var message = "dodgy";
+                    }
                 }
-
-                if (result != SocketError.Success)
+                finally
                 {
-                    throw new RiakException(
-                        "Unable to connect to remote server: {0}:{1} error code {2}".Fmt(_endPoint.Host, _endPoint.Port,
-                            result));
+                    awaitable.Clear();
+                    _socketAwaitablePool.Add(awaitable);
                 }
             }
-            finally
+
+            if (result != SocketError.Success)
             {
-                awaitable.Clear();
-                _socketAwaitablePool.Add(awaitable);
+                throw new RiakException("Unable to connect to remote server: {0}:{1} error code {2}".Fmt(_endPoint.Host, _endPoint.Port, result));
             }
         }
 
@@ -98,7 +105,7 @@ namespace CorrugatedIron.Comms
             {
                 while (true)
                 {       
-                    var result = await _socket.Value.ReceiveAsync(awaitable);
+                    var result = await _socket.ReceiveAsync(awaitable);
 
                     if (result != SocketError.Success)
                     {
@@ -139,7 +146,7 @@ namespace CorrugatedIron.Comms
 
                 while (true)
                 {
-                    var result = await _socket.Value.SendAsync(awaitable);
+                    var result = await _socket.SendAsync(awaitable);
 
                     if (result != SocketError.Success)
                     {
@@ -170,12 +177,19 @@ namespace CorrugatedIron.Comms
             }
         }
 
+        public bool HasSocket
+        {
+            get
+            {
+                return _socket != null;
+            }
+        }
 
         public bool IsConnected
         {
             get
             {
-                return _socket.IsValueCreated && _socket.Value.Connected;
+                return HasSocket && _socket.Connected;
             }
         }
 
@@ -224,14 +238,14 @@ namespace CorrugatedIron.Comms
 
         private async Task<Socket> GetConnectedSocket()
         {
-            if (_socket.Value.Connected)
+            if (IsConnected)
             {
-                return _socket.Value;
+                return _socket;
             }
 
             await ConnectAsync(_endPoint).ConfigureAwait(false);
 
-            return _socket.Value;
+            return _socket;
         }
 
         public async Task Write(MessageCode messageCode)
@@ -442,12 +456,12 @@ namespace CorrugatedIron.Comms
 
         public async Task Disconnect()
         {
-            if (_socket == null || !_socket.IsValueCreated) return;
+            if (_socket == null) return;
 
             var awaitable = _socketAwaitablePool.Take();
             try
             {
-                await _socket.Value.DisonnectAsync(awaitable);
+                await _socket.DisonnectAsync(awaitable);
             }
             finally
             {
@@ -455,9 +469,9 @@ namespace CorrugatedIron.Comms
                 _socketAwaitablePool.Add(awaitable);
             }
 
-            if (_socket != null || _socket.IsValueCreated)
+            if (_socket != null)
             {
-                _socket.Value.Dispose();
+                _socket.Dispose();
                 _socket = null;
             }
         }

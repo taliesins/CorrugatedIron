@@ -16,7 +16,6 @@
 
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using CorrugatedIron.Exceptions;
 using CorrugatedIron.Extensions;
@@ -185,8 +184,8 @@ namespace CorrugatedIron.Comms
             var result = await endPoint.GetSingleResultViaPbc(async socket =>
             {
                 await PbcWrite(socket, request).ConfigureAwait(false);
-                var result2 = await PbcRead<TResult>(socket).ConfigureAwait(false);
-                return result2;
+                var singleResult = await PbcRead<TResult>(socket).ConfigureAwait(false);
+                return singleResult;
             }).ConfigureAwait(false);
 
             return result;

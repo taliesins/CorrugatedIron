@@ -14,6 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+using CorrugatedIron.Exceptions;
 using CorrugatedIron.Extensions;
 using CorrugatedIron.Models;
 using CorrugatedIron.Models.CommitHook;
@@ -69,7 +70,18 @@ namespace CorrugatedIron.Tests.Live.BucketPropertyTests
                 .SetWVal("all")
                 .SetRVal("quorum");
 
-            Client.SetBucketProperties(bucketName, props).ShouldBeTrue();
+            RiakException exception = null;
+            try
+            {
+                var getResult = Client.SetBucketProperties(bucketName, props);
+            }
+            catch (RiakException riakException)
+            {
+                exception = riakException;
+            }
+
+            exception.ShouldNotBeNull();
+            exception.ErrorCode.ShouldEqual((uint)ResultCode.InvalidRequest);
         }
 
         [Test]
@@ -81,33 +93,24 @@ namespace CorrugatedIron.Tests.Live.BucketPropertyTests
             getResult.ShouldNotBeNull();
         }
 
-        [Test]
-        public void GettingPropsOnInvalidBucketStraightAfterSettingDoesntThrowAnException()
-        {
-            // this bucket name must have ONE slash in it. If it has more or less then
-            // errors will come out as expected. If there's one, then Riak thinks we're putting
-            // a value in the cluster and so the operation works.
 
-            var bucketName = string.Format("{0}_{1}", Bucket, "slartibartfast/dentartherdent");
-            var props = new RiakBucketProperties()
-                .SetNVal(4)
-                .SetSearch(true)
-                .SetWVal("all")
-                .SetRVal("quorum");
-
-            Client.SetBucketProperties(bucketName, props).ShouldBeTrue();
-
-            // this shouldn't throw any exceptions
-            var getResult = Client.GetBucketProperties(bucketName);
-            getResult.ShouldBeNull();
-        }
 
         [Test]
         public void GettingExtendedPropertiesOnInvalidBucketReturnsError()
         {
             var bucketName = string.Format("{0}_{1}", Bucket, "this/is/not/a/valid/bucket");
-            var getResult = Client.GetBucketProperties(bucketName);
-            getResult.ShouldBeNull();
+            RiakException exception = null;
+            try
+            {
+                var getResult = Client.GetBucketProperties(bucketName);
+            }
+            catch (RiakException riakException)
+            {
+                exception = riakException;
+            }
+
+            exception.ShouldNotBeNull();
+            exception.ErrorCode.ShouldEqual((uint)ResultCode.InvalidRequest);
         }
 
         [Test]

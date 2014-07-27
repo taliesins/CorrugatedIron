@@ -161,16 +161,19 @@
             {
                 return _shouldCaptureContext;
             }
-
             set
             {
                 lock (_awaiter.SyncRoot)
+                {
                     if (_awaiter.IsCompleted)
+                    {
                         _shouldCaptureContext = value;
+                    }
                     else
-                        throw new InvalidOperationException(
-                            "A socket operation is already in progress"
-                            + " using the same awaitable arguments.");
+                    {
+                        throw new InvalidOperationException("A socket operation is already in progress using the same awaitable arguments.");
+                    }
+                }
             }
         }
 
@@ -197,6 +200,7 @@
         public void Clear()
         {
             Arguments.AcceptSocket = null;
+            Arguments.SocketError = SocketError.Success;
             Arguments.SetBuffer(EmptyArray, 0, 0);
             RemoteEndPoint = null;
             SocketFlags = SocketFlags.None;

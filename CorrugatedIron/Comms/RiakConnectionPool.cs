@@ -14,6 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+using System.Threading.Tasks;
 using CorrugatedIron.Comms.Sockets;
 using CorrugatedIron.Config;
 using System;
@@ -66,16 +67,16 @@ namespace CorrugatedIron.Comms
             }
         }
 
-        public string CreateServerUrl()
+        public async Task<string> CreateServerUrl()
         {
             return _serverUrl;
         }
 
-        public void Release(string serverUrl)
+        public async Task Release(string serverUrl)
         {
         }
 
-        public RiakPbcSocket CreateSocket()
+        public async Task<RiakPbcSocket> CreateSocket()
         {
             if (_disposing) throw new ObjectDisposedException(this.GetType().Name);
 
@@ -90,7 +91,7 @@ namespace CorrugatedIron.Comms
  
         }
 
-        public void Release(RiakPbcSocket socket)
+        public async Task Release(RiakPbcSocket socket)
         {
             if (_disposing) return;
 

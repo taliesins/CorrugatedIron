@@ -125,7 +125,11 @@ namespace CorrugatedIron
         /// </remarks>
         public RiakObject Get(string bucket, string key, RiakGetOptions options = null)
         {
-            return Async.Get(bucket, key, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            var result = Async.Get(bucket, key, options).ConfigureAwait(false)
+                .GetAwaiter()
+                .GetResult();
+
+            return result.IsLeft ? null : result.Right;
         }
 
         /// <summary>
@@ -148,7 +152,8 @@ namespace CorrugatedIron
         /// </remarks>
         public RiakObject Get(string bucket, string key)
         {
-            return Async.Get(bucket, key).ConfigureAwait(false).GetAwaiter().GetResult();
+            var result = Async.Get(bucket, key).ConfigureAwait(false).GetAwaiter().GetResult();
+            return result.IsLeft ? null : result.Right;
         }
 
         /// <summary>
@@ -168,7 +173,8 @@ namespace CorrugatedIron
         /// </remarks>
         public RiakObject Get(RiakObjectId objectId, RiakGetOptions options = null)
         {
-            return Async.Get(objectId, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            var result = Async.Get(objectId, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            return result.IsLeft ? null : result.Right;
         }
 
         /// <summary>
@@ -188,7 +194,11 @@ namespace CorrugatedIron
         /// In addition, applications should plan for multiple failures or multiple cases of siblings being present.</remarks>
         public IEnumerable<RiakObject> Get(IEnumerable<RiakObjectId> bucketKeyPairs, RiakGetOptions options = null)
         {
-            return Async.Get(bucketKeyPairs, options).ToEnumerable().ToList();
+            return Async.Get(bucketKeyPairs, options)
+                .ToEnumerable()
+                .Where(x=>!x.IsLeft)
+                .Select(x=>x.Right)
+                .ToList();
         }
 
         /// <summary>
@@ -202,7 +212,8 @@ namespace CorrugatedIron
         /// </param>
         public RiakObject Put(RiakObject value, RiakPutOptions options = null)
         {
-            return Async.Put(value, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            var result = Async.Put(value, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            return result.IsLeft ? null : result.Right;
         }
 
         /// <summary>
@@ -222,7 +233,11 @@ namespace CorrugatedIron
         /// In addition, applications should plan for multiple failures or multiple cases of siblings being present.</remarks>
         public IEnumerable<RiakObject> Put(IEnumerable<RiakObject> values, RiakPutOptions options = null)
         {
-            return Async.Put(values, options).ToEnumerable().ToList();
+            return Async.Put(values, options)
+                .ToEnumerable()
+                .Where(x=>!x.IsLeft)
+                .Select(x=>x.Right)
+                .ToList();
         }
 
         /// <summary>
@@ -233,7 +248,8 @@ namespace CorrugatedIron
         /// </param>
         public RiakObjectId Delete(RiakObject riakObject, RiakDeleteOptions options = null)
         {
-            return Async.Delete(riakObject, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            var result = Async.Delete(riakObject, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            return result.IsLeft ? null : result.Right;
         }
 
         /// <summary>
@@ -250,7 +266,8 @@ namespace CorrugatedIron
         /// </param>
         public RiakObjectId Delete(string bucket, string key, RiakDeleteOptions options = null)
         {
-            return Async.Delete(bucket, key, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            var result = Async.Delete(bucket, key, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            return result.IsLeft ? null : result.Right;
         }
 
         /// <summary>
@@ -264,7 +281,8 @@ namespace CorrugatedIron
         /// </param>
         public RiakObjectId Delete(RiakObjectId objectId, RiakDeleteOptions options = null)
         {
-            return Async.Delete(objectId, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            var result = Async.Delete(objectId, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            return result.IsLeft ? null : result.Right;
         }
 
         /// <summary>
@@ -280,6 +298,8 @@ namespace CorrugatedIron
         {
             return Async.Delete(objectIds, options)
                 .ToEnumerable()
+                .Where(x=>!x.IsLeft)
+                .Select(x=>x.Right)
                 .ToList();
         }
 
@@ -312,6 +332,8 @@ namespace CorrugatedIron
         {
             return Async.DeleteBucket(bucket, deleteOptions)
                 .ToEnumerable()
+                .Where(x=>!x.IsLeft)
+                .Select(x=>x.Right)
                 .ToList();
         }
 
@@ -474,7 +496,11 @@ namespace CorrugatedIron
         /// <remarks>Refer to http://wiki.basho.com/Links-and-Link-Walking.html for more information.</remarks>
         public IEnumerable<RiakObject> WalkLinks(RiakObject riakObject, IList<RiakLink> riakLinks)
         {
-            return Async.WalkLinks(riakObject, riakLinks).ToEnumerable().ToList();
+            return Async.WalkLinks(riakObject, riakLinks)
+                .ToEnumerable()
+                .Where(x=>!x.IsLeft)
+                .Select(x=>x.Right)
+                .ToList();
         }
 
         /// <summary>

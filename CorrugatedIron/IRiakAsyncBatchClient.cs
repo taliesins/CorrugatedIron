@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Threading.Tasks;
+using CorrugatedIron.Containers;
+using CorrugatedIron.Exceptions;
 using CorrugatedIron.Models;
 using CorrugatedIron.Models.Index;
 using CorrugatedIron.Models.MapReduce;
@@ -13,22 +15,22 @@ namespace CorrugatedIron
     {
         Task<Pong> Ping();
 
-        Task<RiakObject> Get(string bucket, string key, RiakGetOptions options = null);
-        Task<RiakObject> Get(RiakObjectId objectId, RiakGetOptions options = null);
+        Task<Either<RiakException, RiakObject>> Get(string bucket, string key, RiakGetOptions options = null);
+        Task<Either<RiakException, RiakObject>> Get(RiakObjectId objectId, RiakGetOptions options = null);
 
-        IObservable<RiakObject> Get(IEnumerable<RiakObjectId> bucketKeyPairs, RiakGetOptions options = null);
+        IObservable<Either<RiakException, RiakObject>> Get(IEnumerable<RiakObjectId> bucketKeyPairs, RiakGetOptions options = null);
 
         Task<RiakCounterResult> IncrementCounter(string bucket, string counter, long amount, RiakCounterUpdateOptions options = null);
         Task<RiakCounterResult> GetCounter(string bucket, string counter, RiakCounterGetOptions options = null);
 
-        Task<RiakObject> Put(RiakObject value, RiakPutOptions options = null);
-        IObservable<RiakObject> Put(IEnumerable<RiakObject> values, RiakPutOptions options = null);
+        Task<Either<RiakException, RiakObject>> Put(RiakObject value, RiakPutOptions options = null);
+        IObservable<Either<RiakException, RiakObject>> Put(IEnumerable<RiakObject> values, RiakPutOptions options = null);
 
-        Task<RiakObjectId> Delete(RiakObject riakObject, RiakDeleteOptions options = null);
-        Task<RiakObjectId> Delete(string bucket, string key, RiakDeleteOptions options = null);
-        Task<RiakObjectId> Delete(RiakObjectId objectId, RiakDeleteOptions options = null);
-        IObservable<RiakObjectId> Delete(IEnumerable<RiakObjectId> objectIds, RiakDeleteOptions options = null);
-        IObservable<RiakObjectId> DeleteBucket(string bucket, RiakDeleteOptions deleteOptions = null);
+        Task<Either<RiakException, RiakObjectId>> Delete(RiakObject riakObject, RiakDeleteOptions options = null);
+        Task<Either<RiakException, RiakObjectId>> Delete(string bucket, string key, RiakDeleteOptions options = null);
+        Task<Either<RiakException, RiakObjectId>> Delete(RiakObjectId objectId, RiakDeleteOptions options = null);
+        IObservable<Either<RiakException, RiakObjectId>> Delete(IEnumerable<RiakObjectId> objectIds, RiakDeleteOptions options = null);
+        IObservable<Either<RiakException, RiakObjectId>> DeleteBucket(string bucket, RiakDeleteOptions deleteOptions = null);
 
         Task<RiakSearchResult> Search(RiakSearchRequest search);
 
@@ -44,7 +46,7 @@ namespace CorrugatedIron
         Task<bool> SetBucketProperties(string bucket, RiakBucketProperties properties, bool useHttp = false);
         Task<bool> ResetBucketProperties(string bucket, bool useHttp = false);
 
-        IObservable<RiakObject> WalkLinks(RiakObject riakObject, IList<RiakLink> riakLinks);
+        IObservable<Either<RiakException, RiakObject>> WalkLinks(RiakObject riakObject, IList<RiakLink> riakLinks);
 
         Task<RiakServerInfo> GetServerInfo();
 

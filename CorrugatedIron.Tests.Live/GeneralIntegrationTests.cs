@@ -16,7 +16,6 @@
 
 using System.Collections.Generic;
 using System.Reactive.Linq;
-using System.Reactive.Threading.Tasks;
 using CorrugatedIron.Exceptions;
 using CorrugatedIron.Models;
 using CorrugatedIron.Models.MapReduce;
@@ -78,130 +77,82 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
         [Test]
         public void GetWithEmptyStringBucketNameReturnsInvalidRequest()
         {
-            RiakException expectedException = null;
-            try
-            {
-                var getResult = Client.Get("", "key");
-            }
-            catch (RiakException exception)
-            {
-                expectedException = exception;
-            }
+            var result = Client.Async.Get("", "key").Result;
 
-            expectedException.ErrorCode.ShouldEqual((uint)ResultCode.InvalidRequest);
+            result.IsLeft.ShouldBeTrue();
+            var expectedException = result.Left;
+            expectedException.ErrorCode.ShouldEqual((uint) ResultCode.InvalidRequest);
         }
 
         [Test]
         public void GetWithBucketNameWithForwardSlashReturnsInvalidRequest()
         {
-            RiakException expectedException = null;
-            try
-            {
-                var getResult = Client.Get("foo/bar", "key");
-            }
-            catch (RiakException exception)
-            {
-                expectedException = exception;
-            }
+            var result = Client.Async.Get("foo/bar", "key").Result;
 
+            result.IsLeft.ShouldBeTrue();
+            var expectedException = result.Left;
             expectedException.ErrorCode.ShouldEqual((uint)ResultCode.InvalidRequest);
         }
 
         [Test]
         public void GetWithNullBucketNameReturnsInvalidRequest()
         {
-            RiakException expectedException = null;
-            try
-            {
-                var getResult = Client.Get(null, "key");
-            }
-            catch (RiakException exception)
-            {
-                expectedException = exception;
-            }
+            var result = Client.Async.Get(null, "key").Result;
 
+            result.IsLeft.ShouldBeTrue();
+            var expectedException = result.Left;
             expectedException.ErrorCode.ShouldEqual((uint)ResultCode.InvalidRequest);
         }
 
         [Test]
         public void GetWithBucketNameWithJustSpacesReturnsInvalidRequest()
         {
-            RiakException expectedException = null;
-            try
-            {
-                var getResult = Client.Get("  ", "key");
-            }
-            catch (RiakException exception)
-            {
-                expectedException = exception;
-            }
+            var result = Client.Async.Get("  ", "key").Result;
 
+            result.IsLeft.ShouldBeTrue();
+            var expectedException = result.Left;
             expectedException.ErrorCode.ShouldEqual((uint)ResultCode.InvalidRequest);
         }
 
         [Test]
         public void GetWithEmptyStringKeyReturnsInvalidRequest()
         {
-            RiakException expectedException = null;
-            try
-            {
-                var getResult = Client.Get("bucket", "");
-            }
-            catch (RiakException exception)
-            {
-                expectedException = exception;
-            }
-
-            expectedException.ErrorCode.ShouldEqual((uint)ResultCode.InvalidRequest);
+            var result = Client.Async.Get("bucket", "").Result;
+            
+            result.IsLeft.ShouldBeTrue();
+            var expectedException = result.Left;
+            expectedException.ErrorCode.ShouldEqual((uint) ResultCode.InvalidRequest);
         }
 
 
         [Test]
         public void GetWithKeyWithForwardSlashReturnsInvalidRequest()
         {
-            RiakException expectedException = null;
-            try
-            {
-                var getResult = Client.Get("bucket", "foo/bar");
-            }
-            catch (RiakException exception)
-            {
-                expectedException = exception;
-            }
+            var result = Client.Async.Get("bucket", "foo/bar").Result;
 
-            expectedException.ErrorCode.ShouldEqual((uint)ResultCode.InvalidRequest);
+            result.IsLeft.ShouldBeTrue();
+            var expectedException = result.Left;
+            expectedException.ErrorCode.ShouldEqual((uint) ResultCode.InvalidRequest);
         }
 
         [Test]
         public void GetWithKeyWithJustSpacesReturnsInvalidRequest()
         {
-            RiakException expectedException = null;
-            try
-            {
-                var getResult = Client.Get("bucket", "  ");
-            }
-            catch (RiakException exception)
-            {
-                expectedException = exception;
-            }
+            var result = Client.Async.Get("bucket", "  ").Result;
 
-            expectedException.ErrorCode.ShouldEqual((uint)ResultCode.InvalidRequest);
+            result.IsLeft.ShouldBeTrue();
+            var expectedException = result.Left;
+            expectedException.ErrorCode.ShouldEqual((uint) ResultCode.InvalidRequest);
         }
 
         [Test]
         public void GetWithNullKeyReturnsInvalidRequest()
         {
-            RiakException expectedException = null;
-            try
-            {
-                var getResult = Client.Get("bucket", null);
-            }
-            catch (RiakException exception)
-            {
-                expectedException = exception;
-            }
+            var result = Client.Async.Get("bucket", null).Result;
 
-            expectedException.ErrorCode.ShouldEqual((uint)ResultCode.InvalidRequest);
+            result.IsLeft.ShouldBeTrue();
+            var expectedException = result.Left;
+            expectedException.ErrorCode.ShouldEqual((uint) ResultCode.InvalidRequest);
         }
 
         [Test]
@@ -212,16 +163,18 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
 
             writeResult.ShouldNotBeNull();
 
-            var getResults = Client.Get(new List<RiakObjectId>
+            var getResults = Client.Async.Get(new List<RiakObjectId>
             {
                 new RiakObjectId(null, "key"),
                 new RiakObjectId("", "key"),
                 new RiakObjectId("  ", "key"),
                 new RiakObjectId("foo/bar", "key"),
                 new RiakObjectId(TestBucket, TestKey)
-            }).ToList();
+            }).ToEnumerable().ToList();
 
-            getResults.Count(r => r != null).ShouldEqual(1);
+            getResults
+                .Count(r => !r.IsLeft)
+                .ShouldEqual(1);
         }
 
         [Test]
@@ -232,16 +185,18 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
 
             writeResult.ShouldNotBeNull();
 
-            var putResults = Client.Put(new List<RiakObject>
+            var putResults = Client.Async.Put(new List<RiakObject>
             {
                 new RiakObject(null, "key", TestJson, RiakConstants.ContentTypes.ApplicationJson),
                 new RiakObject("", "key", TestJson, RiakConstants.ContentTypes.ApplicationJson),
                 new RiakObject("  ", "key", TestJson, RiakConstants.ContentTypes.ApplicationJson),
                 new RiakObject("foo/bar", "key", TestJson, RiakConstants.ContentTypes.ApplicationJson),
                 new RiakObject(TestBucket, TestKey, TestJson, RiakConstants.ContentTypes.ApplicationJson)
-            }).ToList();
+            }).ToEnumerable().ToList();
 
-            putResults.Count(r => r != null).ShouldEqual(1);
+            putResults
+                .Count(r => !r.IsLeft)
+                .ShouldEqual(1);
         }
 
         [Test]
@@ -252,16 +207,19 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
 
             writeResult.ShouldNotBeNull();
 
-            var deleteResults = Client.Delete(new List<RiakObjectId>
+            var deleteResults = Client.Async.Delete(new List<RiakObjectId>
             {
                 new RiakObjectId(null, "key"),
                 new RiakObjectId("", "key"),
                 new RiakObjectId("  ", "key"),
                 new RiakObjectId("foo/bar", "key"),
                 new RiakObjectId(TestBucket, TestKey)
-            }).ToList();
+            }).ToEnumerable().ToList();
 
-            deleteResults.Count(r => r != null).ShouldEqual(1);
+            deleteResults
+                .Count(x => !x.IsLeft)
+                .ShouldEqual(1);
+
             var deletedItemGetResult = Client.Get(TestBucket, TestKey);
             deletedItemGetResult.ShouldBeNull();
         }
@@ -634,21 +592,21 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
                 Client.Put(doc);
             }
 
-            var keyList = Client.ListKeys(bucket);
+            var keyList = Client.ListKeys(bucket).ToList();
             keyList.Count().ShouldEqual(10);
 
-            var deletedObjectIds = Client.DeleteBucket(bucket);
+            var deletedObjectIds = Client.DeleteBucket(bucket).ToList();
+            deletedObjectIds.Count().ShouldEqual(keyList.Count());
 
             // This might fail if you check straight away
             // because deleting takes time behind the scenes.
             // So wait in case (yup, you can shoot me if you like!)
             Thread.Sleep(4000);
 
-            keyList = Client.ListKeys(bucket);
+            keyList = Client.ListKeys(bucket).ToList();
             keyList.Count().ShouldEqual(0);
-            Client.ListBuckets().Contains(bucket).ShouldBeFalse();
 
-            deletedObjectIds.Count().ShouldEqual(keyList.Count());
+            Client.ListBuckets().Contains(bucket).ShouldBeFalse();
         }
 
         [Test]
@@ -664,17 +622,18 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
                 Client.Put(doc);
             }
 
-            var keyList = Client.ListKeys(bucket);
+            var keyList = Client.ListKeys(bucket).ToList();
             keyList.Count().ShouldEqual(10);
 
-            Client.Async.DeleteBucket(bucket).ToEnumerable().ToList();
-            
+            var deletedObjectIds = Client.Async.DeleteBucket(bucket).ToEnumerable().ToList();
+            deletedObjectIds.Count().ShouldEqual(keyList.Count());
+
             // This might fail if you check straight away
             // because deleting takes time behind the scenes.
             // So wait in case (yup, you can shoot me if you like!)
-            //Thread.Sleep(4000);
+            Thread.Sleep(4000);
 
-            keyList = Client.ListKeys(bucket);
+            keyList = Client.ListKeys(bucket).ToList();
             keyList.Count().ShouldEqual(0);
             Client.ListBuckets().Contains(bucket).ShouldBeFalse();
         }

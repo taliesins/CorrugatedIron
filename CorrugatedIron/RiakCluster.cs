@@ -178,7 +178,7 @@ namespace CorrugatedIron
 
             if (riakEndPointContext.Socket == null)
             {
-                riakEndPointContext.Socket = riakEndPointContext.Node.CreateSocket();
+                riakEndPointContext.Socket = await riakEndPointContext.Node.CreateSocket();
             }
 
             try
@@ -243,7 +243,7 @@ namespace CorrugatedIron
 
             if (riakEndPointContext.Socket == null)
             {
-                riakEndPointContext.Socket = riakEndPointContext.Node.CreateSocket();
+                riakEndPointContext.Socket = await riakEndPointContext.Node.CreateSocket();
             }
 
             try
@@ -308,7 +308,7 @@ namespace CorrugatedIron
 
             if (riakEndPointContext.Socket == null)
             {
-                riakEndPointContext.Socket = riakEndPointContext.Node.CreateSocket();
+                riakEndPointContext.Socket = await riakEndPointContext.Node.CreateSocket();
             }
 
             try

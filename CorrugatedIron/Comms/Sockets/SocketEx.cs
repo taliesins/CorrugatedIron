@@ -292,22 +292,29 @@
                 throw new ArgumentNullException("awaitable", "Awaitable must not be null.");
 
             var a = awaitable.GetAwaiter();
+
             lock (a.SyncRoot)
             {
                 if (!a.IsCompleted)
+                {
                     throw new InvalidOperationException(
                         "A socket operation is already in progress"
                         + " using the same awaitable arguments.");
+                }
 
                 a.Reset();
                 if (awaitable.ShouldCaptureContext)
+                {
                     a.SyncContext = SynchronizationContext.Current;
+                }
             }
 
             try
             {
                 if (!operation.Invoke(socket, awaitable))
+                {
                     a.Complete();
+                }
             }
             catch (SocketException x)
             {
