@@ -260,6 +260,7 @@ namespace CorrugatedIron.Tests.Live
 			};
 
             var linkPeople = Client.WalkLinks(oj, linkPhases);
+
             linkPeople.Count().ShouldEqual(6);
         }
     }

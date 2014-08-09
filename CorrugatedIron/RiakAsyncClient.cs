@@ -223,59 +223,74 @@ namespace CorrugatedIron
             return observable;
         }
 
-        public async Task<RiakCounterResult> IncrementCounter(string bucket, string counter, long amount, RiakCounterUpdateOptions options = null)
+        public async Task<Either<RiakException,RiakCounterResult>> IncrementCounter(string bucket, string counter, long amount, RiakCounterUpdateOptions options = null)
         {
             if (!IsValidBucketOrKey(bucket))
             {
-                throw new RiakException((uint)ResultCode.InvalidRequest, InvalidBucketErrorMessage, false);
+                return new Either<RiakException, RiakCounterResult>(new RiakException((uint)ResultCode.InvalidRequest, InvalidBucketErrorMessage, false));
             }
 
             if (!IsValidBucketOrKey(counter))
             {
-                throw new RiakException((uint)ResultCode.InvalidRequest, InvalidKeyErrorMessage, false);
+                return new Either<RiakException, RiakCounterResult>(new RiakException((uint)ResultCode.InvalidRequest, InvalidKeyErrorMessage, false));
             }
 
             var request = new RpbCounterUpdateReq { bucket = bucket.ToRiakString(), key = counter.ToRiakString(), amount = amount };
             options = options ?? new RiakCounterUpdateOptions();
             options.Populate(request);
 
-            var result = await _connection.PbcWriteRead<RpbCounterUpdateReq, RpbCounterUpdateResp>(_endPoint, request).ConfigureAwait(false);
-
-            var riakObject = new RiakObject(bucket, counter, result.returnvalue);
-            var cVal = 0L;
-            var parseResult = false;
-
-            if (options.ReturnValue != null && options.ReturnValue.Value)
+            try
             {
-                parseResult = long.TryParse(riakObject.Value.FromRiakString(), out cVal);
-            }
+                var result = await _connection.PbcWriteRead<RpbCounterUpdateReq, RpbCounterUpdateResp>(_endPoint, request)
+                            .ConfigureAwait(false);
 
-            return new RiakCounterResult(riakObject, parseResult ? (long?)cVal : null);
+                var riakObject = new RiakObject(bucket, counter, result.returnvalue);
+                var cVal = 0L;
+                var parseResult = false;
+
+                if (options.ReturnValue != null && options.ReturnValue.Value)
+                {
+                    parseResult = long.TryParse(riakObject.Value.FromRiakString(), out cVal);
+                }
+
+                return new Either<RiakException, RiakCounterResult>(new RiakCounterResult(riakObject, parseResult ? (long?) cVal : null));
+            }
+            catch (RiakException riakException)
+            {
+                return new Either<RiakException, RiakCounterResult>(riakException);
+            }
         }
 
-        public async Task<RiakCounterResult> GetCounter(string bucket, string counter, RiakCounterGetOptions options = null) 
+        public async Task<Either<RiakException,RiakCounterResult>> GetCounter(string bucket, string counter, RiakCounterGetOptions options = null) 
         {
             if (!IsValidBucketOrKey(bucket))
             {
-                throw new RiakException((uint)ResultCode.InvalidRequest, InvalidBucketErrorMessage, false);
+                return new Either<RiakException, RiakCounterResult>(new RiakException((uint)ResultCode.InvalidRequest, InvalidBucketErrorMessage, false));
             }
 
             if (!IsValidBucketOrKey(counter))
             {
-                throw new RiakException((uint)ResultCode.InvalidRequest, InvalidKeyErrorMessage, false);
+                return new Either<RiakException, RiakCounterResult>(new RiakException((uint)ResultCode.InvalidRequest, InvalidKeyErrorMessage, false));
             }
 
             var request = new RpbCounterGetReq { bucket = bucket.ToRiakString(), key = counter.ToRiakString() };
             options = options ?? new RiakCounterGetOptions();
             options.Populate(request);
 
-            var result = await _connection.PbcWriteRead<RpbCounterGetReq, RpbCounterGetResp>(_endPoint, request).ConfigureAwait(false);
+            try
+            {
+                var result = await _connection.PbcWriteRead<RpbCounterGetReq, RpbCounterGetResp>(_endPoint, request).ConfigureAwait(false);
 
-            var riakObject = new RiakObject(bucket, counter, result.returnvalue);
-            long cVal;
-            var parseResult = long.TryParse(riakObject.Value.FromRiakString(), out cVal);
+                var riakObject = new RiakObject(bucket, counter, result.returnvalue);
+                long cVal;
+                var parseResult = long.TryParse(riakObject.Value.FromRiakString(), out cVal);
 
-            return new RiakCounterResult(riakObject, parseResult ? (long?)cVal : null);
+                return new Either<RiakException, RiakCounterResult>(new RiakCounterResult(riakObject, parseResult ? (long?) cVal : null));
+            }
+            catch (RiakException riakException)
+            {
+                return new Either<RiakException, RiakCounterResult>(riakException);
+            }
         }
 
         public IObservable<Either<RiakException, RiakObject>> Put(IEnumerable<RiakObject> values, RiakPutOptions options = null)
@@ -473,19 +488,28 @@ namespace CorrugatedIron
         public IObservable<Either<RiakException, RiakObjectId>> DeleteBucket(string bucket, RiakDeleteOptions deleteOptions = null)
         {
             var objectIds = ListKeys(bucket)
-                .Select(key => new RiakObjectId(bucket, key))
+                .Where(x=>!x.IsLeft)
+                .Select(key => new RiakObjectId(bucket, key.Right))
                 .ToEnumerable()
                 .ToList();
 
             return Delete(objectIds, deleteOptions);
         }
 
-        public async Task<RiakSearchResult> Search(RiakSearchRequest search)
+        public async Task<Either<RiakException, RiakSearchResult>> Search(RiakSearchRequest search)
         {
             var request = search.ToMessage();
-            var response = await _connection.PbcWriteRead<RpbSearchQueryReq, RpbSearchQueryResp>(_endPoint, request).ConfigureAwait(false);
+            try
+            {
+                var response = await _connection.PbcWriteRead<RpbSearchQueryReq, RpbSearchQueryResp>(_endPoint, request)
+                    .ConfigureAwait(false);
 
-            return new RiakSearchResult(response);
+                return new Either<RiakException, RiakSearchResult>(new RiakSearchResult(response));
+            }
+            catch (RiakException riakException)
+            {
+                return new Either<RiakException, RiakSearchResult>(riakException);
+            }
         }
 
         public async Task<RiakMapReduceResult> MapReduce(RiakMapReduceQuery query)
@@ -506,28 +530,41 @@ namespace CorrugatedIron
             return new RiakStreamedMapReduceResult(response);
         }
 
-        public IObservable<string> StreamListBuckets()
+        public IObservable<Either<RiakException, string>> StreamListBuckets()
         {
             var lbReq = new RpbListBucketsReq { stream = true };
+
             var buckets = _connection
                 .PbcWriteStreamRead<RpbListBucketsReq, RpbListBucketsResp>(_endPoint, lbReq, lbr => !lbr.done)
-                    .SelectMany(r => r.buckets)
-                    .Select(k => k.FromRiakString());
+                .SelectMany(r => r.buckets)
+                .Select(k => new Either<RiakException, string>(k.FromRiakString()))
+                .Catch<Either<RiakException, string>, RiakException>(exception => Observable.Return(new Either<RiakException, string>(exception)));
 
             return buckets;
         }
 
-        public IObservable<string> ListBuckets()
+        public IObservable<Either<RiakException,string>> ListBuckets()
         {
-            var observable = Observable.Create<string>(async obs =>
+            var observable = Observable.Create<Either<RiakException,string>>(async obs =>
             {
                 try
                 {
-                    var result = await _connection.PbcWriteRead<RpbListBucketsResp>(_endPoint, MessageCode.ListBucketsReq).ConfigureAwait(false);
-                    var buckets = result.buckets.Select(b => b.FromRiakString());
-                    foreach (var bucket in buckets)
+                    try
                     {
-                        obs.OnNext(bucket);
+                        var result = await _connection.PbcWriteRead<RpbListBucketsResp>(_endPoint, MessageCode.ListBucketsReq)
+                                    .ConfigureAwait(false);
+
+                        var buckets = result.buckets
+                            .Select(b => b.FromRiakString());
+
+                        foreach (var bucket in buckets)
+                        {
+                            obs.OnNext(new Either<RiakException, string>(bucket));
+                        }
+                    }
+                    catch (RiakException riakException)
+                    {
+                        obs.OnNext(new Either<RiakException, string>(riakException));
                     }
                     obs.OnCompleted();
                 }
@@ -541,7 +578,7 @@ namespace CorrugatedIron
             return observable;
         }
 
-        public IObservable<string> ListKeys(string bucket)
+        public IObservable<Either<RiakException, string>> ListKeys(string bucket)
         {
             System.Diagnostics.Debug.Write(ListKeysWarning);
             System.Diagnostics.Trace.TraceWarning(ListKeysWarning);
@@ -552,23 +589,27 @@ namespace CorrugatedIron
             var keys = _connection
                 .PbcWriteRead<RpbListKeysReq, RpbListKeysResp>(_endPoint, lkReq, lkr => !lkr.done)
                 .SelectMany(r => r.keys)
-                .Select(k => k.FromRiakString())
-                .Distinct();
+                .Select(k => new Either<RiakException, string>(k.FromRiakString()))
+                .Catch<Either<RiakException, string>, RiakException>(exception => Observable.Return(new Either<RiakException, string>(exception)));
 
+                
             return keys;
         }
 
-        public IObservable<string> StreamListKeys(string bucket)
+        public IObservable<Either<RiakException, string>> StreamListKeys(string bucket)
         {
             System.Diagnostics.Debug.Write(ListKeysWarning);
             System.Diagnostics.Trace.TraceWarning(ListKeysWarning);
             Console.WriteLine(ListKeysWarning);
 
             var lkReq = new RpbListKeysReq {bucket = bucket.ToRiakString()};
+
             var keys = _connection
                 .PbcWriteStreamRead<RpbListKeysReq, RpbListKeysResp>(_endPoint, lkReq, lkr => !lkr.done)
                 .SelectMany(r => r.keys)
-                .Select(k => k.FromRiakString());
+                .Select(k => new Either<RiakException, string>(k.FromRiakString()))
+                .Catch<Either<RiakException, string>, RiakException>(exception => Observable.Return(new Either<RiakException, string>(exception)));
+
 
             return keys;
         }
@@ -663,22 +704,22 @@ namespace CorrugatedIron
             }
         }
 
-        public Task<RiakIndexResult> IndexGet(string bucket, string indexName, BigInteger value, RiakIndexGetOptions options = null)
+        public Task<Either<RiakException, RiakIndexResult>> IndexGet(string bucket, string indexName, BigInteger value, RiakIndexGetOptions options = null)
         {
             return IndexGetEquals(bucket, indexName.ToIntegerKey(), value.ToString(), options);
         }
 
-        public Task<RiakIndexResult> IndexGet(string bucket, string indexName, string value, RiakIndexGetOptions options = null)
+        public Task<Either<RiakException, RiakIndexResult>> IndexGet(string bucket, string indexName, string value, RiakIndexGetOptions options = null)
         {
             return IndexGetEquals(bucket, indexName.ToBinaryKey(), value, options);
         }
 
-        public Task<RiakIndexResult> IndexGet(string bucket, string indexName, BigInteger minValue, BigInteger maxValue, RiakIndexGetOptions options = null)
+        public Task<Either<RiakException, RiakIndexResult>> IndexGet(string bucket, string indexName, BigInteger minValue, BigInteger maxValue, RiakIndexGetOptions options = null)
         {
             return IndexGetRange(bucket, indexName.ToIntegerKey(), minValue.ToString(), maxValue.ToString(), options);
         }
 
-        public Task<RiakIndexResult> IndexGet(string bucket, string indexName, string minValue, string maxValue, RiakIndexGetOptions options = null)
+        public Task<Either<RiakException, RiakIndexResult>> IndexGet(string bucket, string indexName, string minValue, string maxValue, RiakIndexGetOptions options = null)
         {
             return IndexGetRange(bucket, indexName.ToBinaryKey(), minValue, maxValue, options);
         }
@@ -688,7 +729,7 @@ namespace CorrugatedIron
             return options.ReturnTerms != null && options.ReturnTerms.Value;
         }
 
-        private async Task<RiakIndexResult> IndexGetRange(string bucket, string indexName, string minValue, string maxValue, RiakIndexGetOptions options = null)
+        private async Task<Either<RiakException, RiakIndexResult>> IndexGetRange(string bucket, string indexName, string minValue, string maxValue, RiakIndexGetOptions options = null)
         {
             var message = new RpbIndexReq
             {
@@ -702,13 +743,20 @@ namespace CorrugatedIron
             options = options ?? new RiakIndexGetOptions();
             options.Populate(message);
 
-            var result = await _connection.PbcWriteRead<RpbIndexReq, RpbIndexResp>(_endPoint, message).ConfigureAwait(false);
-            var includeTerms = ReturnTerms(options);
-            var riakIndexResult = new RiakIndexResult(includeTerms, result);
-            return riakIndexResult;
+            try
+            {
+                var result = await _connection.PbcWriteRead<RpbIndexReq, RpbIndexResp>(_endPoint, message).ConfigureAwait(false);
+                var includeTerms = ReturnTerms(options);
+                var riakIndexResult = new RiakIndexResult(includeTerms, result);
+                return new Either<RiakException, RiakIndexResult>(riakIndexResult);
+            }
+            catch (RiakException riakException)
+            {
+                return new Either<RiakException, RiakIndexResult>(riakException);
+            }
         }
 
-        private async Task<RiakIndexResult> IndexGetEquals(string bucket, string indexName, string value, RiakIndexGetOptions options = null)
+        private async Task<Either<RiakException, RiakIndexResult>> IndexGetEquals(string bucket, string indexName, string value, RiakIndexGetOptions options = null)
         {
             var message = new RpbIndexReq
             {
@@ -721,34 +769,41 @@ namespace CorrugatedIron
             options = options ?? new RiakIndexGetOptions();
             options.Populate(message);
 
-            var result = await _connection.PbcWriteRead<RpbIndexReq, RpbIndexResp>(_endPoint, message).ConfigureAwait(false);
-            var includeTerms = ReturnTerms(options);
-            var riakIndexResult = new RiakIndexResult(includeTerms, result);
+            try
+            {
+                var result = await _connection.PbcWriteRead<RpbIndexReq, RpbIndexResp>(_endPoint, message).ConfigureAwait(false);
+                var includeTerms = ReturnTerms(options);
+                var riakIndexResult = new RiakIndexResult(includeTerms, result);
 
-            return riakIndexResult;
+                return new Either<RiakException, RiakIndexResult>(riakIndexResult);
+            }
+            catch (RiakException riakException)
+            {
+                return new Either<RiakException, RiakIndexResult>(riakException);
+            }
         }
 
-        public Task<RiakStreamedIndexResult> StreamIndexGet(string bucket, string indexName, BigInteger value, RiakIndexGetOptions options = null)
+        public Task<Either<RiakException, RiakStreamedIndexResult>> StreamIndexGet(string bucket, string indexName, BigInteger value, RiakIndexGetOptions options = null)
         {
             return StreamIndexGetEquals(bucket, indexName.ToIntegerKey(), value.ToString(), options);
         }
 
-        public Task<RiakStreamedIndexResult> StreamIndexGet(string bucket, string indexName, string value, RiakIndexGetOptions options = null)
+        public Task<Either<RiakException, RiakStreamedIndexResult>> StreamIndexGet(string bucket, string indexName, string value, RiakIndexGetOptions options = null)
         {
             return StreamIndexGetEquals(bucket, indexName.ToBinaryKey(), value, options);
         }
 
-        public Task<RiakStreamedIndexResult> StreamIndexGet(string bucket, string indexName, BigInteger minValue, BigInteger maxValue, RiakIndexGetOptions options = null)
+        public Task<Either<RiakException, RiakStreamedIndexResult>> StreamIndexGet(string bucket, string indexName, BigInteger minValue, BigInteger maxValue, RiakIndexGetOptions options = null)
         {
             return StreamIndexGetRange(bucket, indexName.ToIntegerKey(), minValue.ToString(), maxValue.ToString(), options);
         }
 
-        public Task<RiakStreamedIndexResult> StreamIndexGet(string bucket, string indexName, string minValue, string maxValue, RiakIndexGetOptions options = null)
+        public Task<Either<RiakException, RiakStreamedIndexResult>> StreamIndexGet(string bucket, string indexName, string minValue, string maxValue, RiakIndexGetOptions options = null)
         {
             return StreamIndexGetRange(bucket, indexName.ToBinaryKey(), minValue, maxValue, options);
         }
 
-        private async Task<RiakStreamedIndexResult> StreamIndexGetEquals(string bucket, string indexName, string value, RiakIndexGetOptions options = null)
+        private async Task<Either<RiakException, RiakStreamedIndexResult>> StreamIndexGetEquals(string bucket, string indexName, string value, RiakIndexGetOptions options = null)
         {
             var message = new RpbIndexReq
             {
@@ -762,15 +817,24 @@ namespace CorrugatedIron
             options = options ?? new RiakIndexGetOptions();
             options.Populate(message);
 
-            var result = _connection.PbcWriteStreamRead<RpbIndexReq, RpbIndexResp>(_endPoint, message, lbr => !lbr.done);
+            try
+            {
+                var result = _connection.PbcWriteStreamRead<RpbIndexReq, RpbIndexResp>(_endPoint, message,
+                    lbr => !lbr.done);
 
-            var includeTerms = ReturnTerms(options);
-            var riakStreamedIndexResult = new RiakStreamedIndexResult(includeTerms, result);
+                var includeTerms = ReturnTerms(options);
+                var riakStreamedIndexResult = new RiakStreamedIndexResult(includeTerms, result);
 
-            return riakStreamedIndexResult;
+
+                return new Either<RiakException, RiakStreamedIndexResult>(riakStreamedIndexResult);
+            }
+            catch (RiakException riakException)
+            {
+                return new Either<RiakException, RiakStreamedIndexResult>(riakException);
+            }
         }
 
-        private async Task<RiakStreamedIndexResult> StreamIndexGetRange(string bucket, string indexName, string minValue, string maxValue, RiakIndexGetOptions options = null)
+        private async Task<Either<RiakException, RiakStreamedIndexResult>> StreamIndexGetRange(string bucket, string indexName, string minValue, string maxValue, RiakIndexGetOptions options = null)
         {
             var message = new RpbIndexReq
             {
@@ -785,25 +849,40 @@ namespace CorrugatedIron
             options = options ?? new RiakIndexGetOptions();
             options.Populate(message);
 
-            var result = _connection.PbcWriteStreamRead<RpbIndexReq, RpbIndexResp>(_endPoint, message, lbr => !lbr.done);
-            var includeTerms = ReturnTerms(options);
-            var riakStreamedIndexResult = new RiakStreamedIndexResult(includeTerms, result);
+            try
+            {
+                var result = _connection.PbcWriteStreamRead<RpbIndexReq, RpbIndexResp>(_endPoint, message, lbr => !lbr.done);
+                var includeTerms = ReturnTerms(options);
+                var riakStreamedIndexResult = new RiakStreamedIndexResult(includeTerms, result);
 
-            return riakStreamedIndexResult;
+                return new Either<RiakException, RiakStreamedIndexResult>(riakStreamedIndexResult);
+            }
+            catch (RiakException riakException)
+            {
+                return new Either<RiakException, RiakStreamedIndexResult>(riakException);
+            }
         }
 
-        public IObservable<string> ListKeysFromIndex(string bucket)
+        public IObservable<Either<RiakException, string>> ListKeysFromIndex(string bucket)
         {
-            var observables = Observable.Create<string>(async obs =>
+            var observables = Observable.Create<Either<RiakException, string>>(async obs =>
             {
                 try
                 {
                     var result = await IndexGet(bucket, RiakConstants.SystemIndexKeys.RiakBucketIndex, bucket).ConfigureAwait(false);
-                    var keys = result.IndexKeyTerms.Select(ikt => ikt.Key);
 
-                    foreach (var key in keys)
+                    if (result.IsLeft)
                     {
-                        obs.OnNext(key);
+                        obs.OnNext(new Either<RiakException, string>(result.Left));
+                    }
+                    else
+                    {
+                        var keys = result.Right.IndexKeyTerms.Select(ikt => ikt.Key);
+
+                        foreach (var key in keys)
+                        {
+                            obs.OnNext(new Either<RiakException, string>(key));
+                        }
                     }
                     obs.OnCompleted();
                 }
@@ -876,11 +955,19 @@ namespace CorrugatedIron
             return observables;
         }
 
-        public async Task<RiakServerInfo> GetServerInfo()
+        public async Task<Either<RiakException, RiakServerInfo>> GetServerInfo()
         {
-            var result = await _connection.PbcWriteRead<RpbGetServerInfoResp>(_endPoint, MessageCode.GetServerInfoReq).ConfigureAwait(false);
+            try
+            {
+                var result = await _connection.PbcWriteRead<RpbGetServerInfoResp>(_endPoint, MessageCode.GetServerInfoReq)
+                            .ConfigureAwait(false);
 
-            return new RiakServerInfo(result);
+                return new Either<RiakException, RiakServerInfo>(new RiakServerInfo(result));
+            }
+            catch (RiakException riakException)
+            {
+                return new Either<RiakException, RiakServerInfo>(riakException);
+            }
         }
     }
 }

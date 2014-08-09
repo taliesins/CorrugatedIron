@@ -20,8 +20,8 @@ namespace CorrugatedIron
 
         IObservable<Either<RiakException, RiakObject>> Get(IEnumerable<RiakObjectId> bucketKeyPairs, RiakGetOptions options = null);
 
-        Task<RiakCounterResult> IncrementCounter(string bucket, string counter, long amount, RiakCounterUpdateOptions options = null);
-        Task<RiakCounterResult> GetCounter(string bucket, string counter, RiakCounterGetOptions options = null);
+        Task<Either<RiakException,RiakCounterResult>> IncrementCounter(string bucket, string counter, long amount, RiakCounterUpdateOptions options = null);
+        Task<Either<RiakException,RiakCounterResult>> GetCounter(string bucket, string counter, RiakCounterGetOptions options = null);
 
         Task<Either<RiakException, RiakObject>> Put(RiakObject value, RiakPutOptions options = null);
         IObservable<Either<RiakException, RiakObject>> Put(IEnumerable<RiakObject> values, RiakPutOptions options = null);
@@ -32,15 +32,15 @@ namespace CorrugatedIron
         IObservable<Either<RiakException, RiakObjectId>> Delete(IEnumerable<RiakObjectId> objectIds, RiakDeleteOptions options = null);
         IObservable<Either<RiakException, RiakObjectId>> DeleteBucket(string bucket, RiakDeleteOptions deleteOptions = null);
 
-        Task<RiakSearchResult> Search(RiakSearchRequest search);
+        Task<Either<RiakException, RiakSearchResult>> Search(RiakSearchRequest search);
 
         Task<RiakMapReduceResult> MapReduce(RiakMapReduceQuery query);
         Task<RiakStreamedMapReduceResult> StreamMapReduce(RiakMapReduceQuery query);
 
-        IObservable<string> ListBuckets();
-        IObservable<string> StreamListBuckets();
-        IObservable<string> ListKeys(string bucket);
-        IObservable<string> StreamListKeys(string bucket);
+        IObservable<Either<RiakException,string>> ListBuckets();
+        IObservable<Either<RiakException,string>> StreamListBuckets();
+        IObservable<Either<RiakException,string>> ListKeys(string bucket);
+        IObservable<Either<RiakException,string>> StreamListKeys(string bucket);
 
         Task<RiakBucketProperties> GetBucketProperties(string bucket);
         Task<bool> SetBucketProperties(string bucket, RiakBucketProperties properties, bool useHttp = false);
@@ -48,18 +48,18 @@ namespace CorrugatedIron
 
         IObservable<Either<RiakException, RiakObject>> WalkLinks(RiakObject riakObject, IList<RiakLink> riakLinks);
 
-        Task<RiakServerInfo> GetServerInfo();
+        Task<Either<RiakException, RiakServerInfo>> GetServerInfo();
 
-        Task<RiakIndexResult> IndexGet(string bucket, string indexName, BigInteger value, RiakIndexGetOptions options = null);
-        Task<RiakIndexResult> IndexGet(string bucket, string indexName, string value, RiakIndexGetOptions options = null);
-        Task<RiakIndexResult> IndexGet(string bucket, string indexName, BigInteger minValue, BigInteger maxValue, RiakIndexGetOptions options = null);
-        Task<RiakIndexResult> IndexGet(string bucket, string indexName, string minValue, string maxValue, RiakIndexGetOptions options = null);
+        Task<Either<RiakException, RiakIndexResult>> IndexGet(string bucket, string indexName, BigInteger value, RiakIndexGetOptions options = null);
+        Task<Either<RiakException, RiakIndexResult>> IndexGet(string bucket, string indexName, string value, RiakIndexGetOptions options = null);
+        Task<Either<RiakException, RiakIndexResult>> IndexGet(string bucket, string indexName, BigInteger minValue, BigInteger maxValue, RiakIndexGetOptions options = null);
+        Task<Either<RiakException, RiakIndexResult>> IndexGet(string bucket, string indexName, string minValue, string maxValue, RiakIndexGetOptions options = null);
 
-        Task<RiakStreamedIndexResult> StreamIndexGet(string bucket, string indexName, BigInteger value, RiakIndexGetOptions options = null);
-        Task<RiakStreamedIndexResult> StreamIndexGet(string bucket, string indexName, string value, RiakIndexGetOptions options = null);
-        Task<RiakStreamedIndexResult> StreamIndexGet(string bucket, string indexName, BigInteger minValue, BigInteger maxValue, RiakIndexGetOptions options = null);
-        Task<RiakStreamedIndexResult> StreamIndexGet(string bucket, string indexName, string minValue, string maxValue, RiakIndexGetOptions options = null);
+        Task<Either<RiakException, RiakStreamedIndexResult>> StreamIndexGet(string bucket, string indexName, BigInteger value, RiakIndexGetOptions options = null);
+        Task<Either<RiakException, RiakStreamedIndexResult>> StreamIndexGet(string bucket, string indexName, string value, RiakIndexGetOptions options = null);
+        Task<Either<RiakException, RiakStreamedIndexResult>> StreamIndexGet(string bucket, string indexName, BigInteger minValue, BigInteger maxValue, RiakIndexGetOptions options = null);
+        Task<Either<RiakException, RiakStreamedIndexResult>> StreamIndexGet(string bucket, string indexName, string minValue, string maxValue, RiakIndexGetOptions options = null);
 
-        IObservable<string> ListKeysFromIndex(string bucket);
+        IObservable<Either<RiakException, string>> ListKeysFromIndex(string bucket);
     }
 }

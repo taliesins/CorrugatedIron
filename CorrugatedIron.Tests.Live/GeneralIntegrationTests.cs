@@ -16,6 +16,7 @@
 
 using System.Collections.Generic;
 using System.Reactive.Linq;
+using CorrugatedIron.Containers;
 using CorrugatedIron.Exceptions;
 using CorrugatedIron.Models;
 using CorrugatedIron.Models.MapReduce;
@@ -678,9 +679,9 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
                 r.ShouldNotBeNull();
             }
 
-            List<string> result = Client.Async.ListKeys(bucket).ToEnumerable().ToList();
-
-            //result.ShouldEqual(10);
+            var result = Client.Async.ListKeys(bucket).ToEnumerable().ToList();
+            
+            result.Count.ShouldEqual(10);
         }
     }
 }

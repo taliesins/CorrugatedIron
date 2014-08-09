@@ -88,7 +88,13 @@ namespace CorrugatedIron
         /// <remarks>Only available in Riak 1.4+. If the counter is not initialized, then the counter will be initialized to 0 and then incremented.</remarks>
         public RiakCounterResult IncrementCounter(string bucket, string counter, long amount, RiakCounterUpdateOptions options = null)
         {
-            return Async.IncrementCounter(bucket, counter, amount, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            var result = Async.IncrementCounter(bucket, counter, amount, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            if (result.IsLeft)
+            {
+                throw result.Left;
+            }
+            
+            return result.Right;
         }
 
         /// <summary>
@@ -101,7 +107,13 @@ namespace CorrugatedIron
         /// <remarks>Only available in Riak 1.4+.</remarks>
         public RiakCounterResult GetCounter(string bucket, string counter, RiakCounterGetOptions options = null)
         {
-            return Async.GetCounter(bucket, counter, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            var result = Async.GetCounter(bucket, counter, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            if (result.IsLeft)
+            {
+                throw result.Left;
+            }
+
+            return result.Right;
         }
 
         /// <summary>
@@ -344,7 +356,8 @@ namespace CorrugatedIron
         /// <returns>A <see cref="RiakResult"/> of <see cref="RiakSearchResult"/></returns>
         public RiakSearchResult Search(RiakSearchRequest search)
         {
-            return Async.Search(search).ConfigureAwait(false).GetAwaiter().GetResult();
+            var result = Async.Search(search).ConfigureAwait(false).GetAwaiter().GetResult();
+            return result.IsLeft ? null : result.Right;
         }
 
         /// <summary>
@@ -379,7 +392,11 @@ namespace CorrugatedIron
         /// physical I/O and can take a long time.</remarks>
         public IEnumerable<string> ListBuckets()
         {
-            return Async.ListBuckets().ToEnumerable().ToList();
+            return Async.ListBuckets()
+                .ToEnumerable()
+                .Where(x => !x.IsLeft)
+                .Select(x => x.Right)
+                .ToList();
         }
 
         /// <summary>
@@ -394,7 +411,11 @@ namespace CorrugatedIron
         /// physical I/O and can take a long time. Callers should fully enumerate the collection or else close the connection when finished.</remarks>
         public IEnumerable<string> StreamListBuckets()
         {
-            return Async.StreamListBuckets().ToEnumerable().ToList();
+            return Async.StreamListBuckets()
+                .ToEnumerable()
+                .Where(x => !x.IsLeft)
+                .Select(x => x.Right)
+                .ToList();
         }
 
         /// <summary>
@@ -410,7 +431,11 @@ namespace CorrugatedIron
         /// a list of keys. This operation, while cheaper in Riak 1.0 than in earlier versions of Riak, should be avoided.</remarks>
         public IEnumerable<string> ListKeys(string bucket)
         {
-            return Async.ListKeys(bucket).ToEnumerable().ToList();
+            return Async.ListKeys(bucket)
+                .ToEnumerable()
+                .Where(x => !x.IsLeft)
+                .Select(x => x.Right)
+                .ToList();
         }
 
         /// <summary>
@@ -423,7 +448,11 @@ namespace CorrugatedIron
         /// use <see cref="ListKeysFromIndex"/></remarks>
         public IEnumerable<string> StreamListKeys(string bucket)
         {
-            return Async.StreamListKeys(bucket).ToEnumerable().ToList();
+            return Async.StreamListKeys(bucket)
+                .ToEnumerable()
+                .Where(x => !x.IsLeft)
+                .Select(x => x.Right)
+                .ToList();
         }
 
         /// <summary>
@@ -435,7 +464,11 @@ namespace CorrugatedIron
         /// quickly return an unsorted list of keys from Riak.</remarks>
         public IEnumerable<string> ListKeysFromIndex(string bucket)
         {
-            return Async.ListKeysFromIndex(bucket).ToEnumerable().ToList();
+            return Async.ListKeysFromIndex(bucket)
+                .ToEnumerable()
+                .Where(x => !x.IsLeft)
+                .Select(x => x.Right)
+                .ToList();
         }
 
         /// <summary>
@@ -496,11 +529,13 @@ namespace CorrugatedIron
         /// <remarks>Refer to http://wiki.basho.com/Links-and-Link-Walking.html for more information.</remarks>
         public IEnumerable<RiakObject> WalkLinks(RiakObject riakObject, IList<RiakLink> riakLinks)
         {
-            return Async.WalkLinks(riakObject, riakLinks)
+            var links = Async.WalkLinks(riakObject, riakLinks)
+                .Where(x => !x.IsLeft)
+                .Select(x => x.Right)
                 .ToEnumerable()
-                .Where(x=>!x.IsLeft)
-                .Select(x=>x.Right)
                 .ToList();
+
+            return links;
         }
 
         /// <summary>
@@ -513,7 +548,12 @@ namespace CorrugatedIron
         /// run on the same version of Riak.</remarks>
         public RiakServerInfo GetServerInfo()
         {
-            return Async.GetServerInfo().ConfigureAwait(false).GetAwaiter().GetResult();
+            var result = Async.GetServerInfo().ConfigureAwait(false).GetAwaiter().GetResult();
+            if (result.IsLeft)
+            {
+                throw result.Left;
+            }
+            return result.Right;
         }
 
         /// <summary>
@@ -528,7 +568,12 @@ namespace CorrugatedIron
         /// <remarks>Make sure to fully enumerate the <see cref="IEnumerable{T}"/> of <see cref="RiakIndexKeyTerm"/>.</remarks>
         public RiakStreamedIndexResult StreamIndexGet(string bucket, string indexName, BigInteger value, RiakIndexGetOptions options = null)
         {
-            return Async.StreamIndexGet(bucket, indexName, value, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            var result = Async.StreamIndexGet(bucket, indexName, value, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            if (result.IsLeft)
+            {
+                throw result.Left;
+            }
+            return result.Right;
         }
 
         /// <summary>
@@ -543,7 +588,12 @@ namespace CorrugatedIron
         /// <remarks>Make sure to fully enumerate the <see cref="IEnumerable{T}"/> of <see cref="RiakIndexKeyTerm"/>.</remarks>
         public RiakStreamedIndexResult StreamIndexGet(string bucket, string indexName, string value, RiakIndexGetOptions options = null)
         {
-            return Async.StreamIndexGet(bucket, indexName, value, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            var result = Async.StreamIndexGet(bucket, indexName, value, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            if (result.IsLeft)
+            {
+                throw result.Left;
+            }
+            return result.Right;
         }
 
         /// <summary>
@@ -559,7 +609,12 @@ namespace CorrugatedIron
         /// <remarks>Make sure to fully enumerate the <see cref="IEnumerable{T}"/> of <see cref="RiakIndexKeyTerm"/>.</remarks>
         public RiakStreamedIndexResult StreamIndexGet(string bucket, string indexName, BigInteger minValue, BigInteger maxValue, RiakIndexGetOptions options = null)
         {
-            return Async.StreamIndexGet(bucket, indexName, minValue, maxValue, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            var result = Async.StreamIndexGet(bucket, indexName, minValue, maxValue, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            if (result.IsLeft)
+            {
+                throw result.Left;
+            }
+            return result.Right;
         }
 
         /// <summary>
@@ -575,7 +630,12 @@ namespace CorrugatedIron
         /// <remarks>Make sure to fully enumerate the <see cref="IEnumerable{T}"/> of <see cref="RiakIndexKeyTerm"/>.</remarks>
         public RiakStreamedIndexResult StreamIndexGet(string bucket, string indexName, string minValue, string maxValue, RiakIndexGetOptions options = null)
         {
-            return Async.StreamIndexGet(bucket, indexName, minValue, maxValue, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            var result = Async.StreamIndexGet(bucket, indexName, minValue, maxValue, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            if (result.IsLeft)
+            {
+                throw result.Left;
+            }
+            return result.Right;
         }
 
         /// <summary>
@@ -589,7 +649,12 @@ namespace CorrugatedIron
         /// <returns>A <see cref="RiakResult{T}"/> of <see cref="RiakIndexResult"/></returns>
         public RiakIndexResult IndexGet(string bucket, string indexName, string minValue, string maxValue, RiakIndexGetOptions options = null)
         {
-            return Async.IndexGet(bucket, indexName, minValue, maxValue, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            var result = Async.IndexGet(bucket, indexName, minValue, maxValue, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            if (result.IsLeft)
+            {
+                throw result.Left;
+            }
+            return result.Right;
         }
 
         /// <summary>
@@ -603,7 +668,12 @@ namespace CorrugatedIron
         /// <returns>A <see cref="RiakResult{T}"/> of <see cref="RiakIndexResult"/></returns>
         public RiakIndexResult IndexGet(string bucket, string indexName, BigInteger minValue, BigInteger maxValue, RiakIndexGetOptions options = null)
         {
-            return Async.IndexGet(bucket, indexName, minValue, maxValue, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            var result = Async.IndexGet(bucket, indexName, minValue, maxValue, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            if (result.IsLeft)
+            {
+                throw result.Left;
+            }
+            return result.Right;
         }
      
         /// <summary>
@@ -616,7 +686,12 @@ namespace CorrugatedIron
         /// <returns>A <see cref="RiakResult{T}"/> of <see cref="RiakIndexResult"/></returns>
         public RiakIndexResult IndexGet(string bucket, string indexName, string value, RiakIndexGetOptions options = null)
         {
-            return Async.IndexGet(bucket, indexName, value, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            var result = Async.IndexGet(bucket, indexName, value, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            if (result.IsLeft)
+            {
+                throw result.Left;
+            }
+            return result.Right;
         }
 
         /// <summary>
@@ -629,7 +704,12 @@ namespace CorrugatedIron
         /// <returns>A <see cref="RiakResult{T}"/> of <see cref="RiakIndexResult"/></returns>
         public RiakIndexResult IndexGet(string bucket, string indexName, BigInteger value, RiakIndexGetOptions options = null)
         {
-            return Async.IndexGet(bucket, indexName, value, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            var result = Async.IndexGet(bucket, indexName, value, options).ConfigureAwait(false).GetAwaiter().GetResult();
+            if (result.IsLeft)
+            {
+                throw result.Left;
+            }
+            return result.Right;
         }
 
         internal static RiakGetOptions DefaultGetOptions()
