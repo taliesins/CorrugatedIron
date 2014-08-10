@@ -171,7 +171,9 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
                 new RiakObjectId("  ", "key"),
                 new RiakObjectId("foo/bar", "key"),
                 new RiakObjectId(TestBucket, TestKey)
-            }).ToEnumerable().ToList();
+            })
+            .ToEnumerable()
+            .ToList();
 
             getResults
                 .Count(r => !r.IsLeft)
@@ -193,7 +195,9 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
                 new RiakObject("  ", "key", TestJson, RiakConstants.ContentTypes.ApplicationJson),
                 new RiakObject("foo/bar", "key", TestJson, RiakConstants.ContentTypes.ApplicationJson),
                 new RiakObject(TestBucket, TestKey, TestJson, RiakConstants.ContentTypes.ApplicationJson)
-            }).ToEnumerable().ToList();
+            })
+            .ToEnumerable()
+            .ToList();
 
             putResults
                 .Count(r => !r.IsLeft)
@@ -215,7 +219,9 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
                 new RiakObjectId("  ", "key"),
                 new RiakObjectId("foo/bar", "key"),
                 new RiakObjectId(TestBucket, TestKey)
-            }).ToEnumerable().ToList();
+            })
+            .ToEnumerable()
+            .ToList();
 
             deleteResults
                 .Count(x => !x.IsLeft)
@@ -626,7 +632,9 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
             var keyList = Client.ListKeys(bucket).ToList();
             keyList.Count().ShouldEqual(10);
 
-            var deletedObjectIds = Client.Async.DeleteBucket(bucket).ToEnumerable().ToList();
+            var deletedObjectIds = Client.Async.DeleteBucket(bucket)
+                .ToEnumerable()
+                .ToList();
             deletedObjectIds.Count().ShouldEqual(keyList.Count());
 
             // This might fail if you check straight away
@@ -679,7 +687,9 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
                 r.ShouldNotBeNull();
             }
 
-            var result = Client.Async.ListKeys(bucket).ToEnumerable().ToList();
+            var result = Client.Async.ListKeys(bucket)
+                .ToEnumerable()
+                .ToList();
             
             result.Count.ShouldEqual(10);
         }

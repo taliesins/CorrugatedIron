@@ -15,6 +15,8 @@
 // under the License.
 
 using System.Reactive.Linq;
+using CorrugatedIron.Containers;
+using CorrugatedIron.Exceptions;
 using CorrugatedIron.Extensions;
 using CorrugatedIron.Models;
 using CorrugatedIron.Tests.Extensions;
@@ -103,7 +105,9 @@ namespace CorrugatedIron.Tests.Live
 
             var list = new List<RiakObjectId> { oneObjectId, twoObjectId };
 
-            var deletedObjectIds = Client.Async.Delete(list).ToEnumerable().ToList();
+            var deletedObjectIds = Client.Async.Delete(list)
+                .ToEnumerable()
+                .ToList();
             deletedObjectIds.Count().ShouldEqual(2);
 
             var oneResult = Client.Get(oneObjectId);
@@ -127,9 +131,11 @@ namespace CorrugatedIron.Tests.Live
 
             var list = new List<RiakObjectId> {oneObjectId, twoObjectId};
 
-            var results = Client.Async.Get(list).ToEnumerable().ToList();
+            var results = Client.Async.Get(list)
+                .ToEnumerable()
+                .ToList();
 
-            results.Count.ShouldEqual(2);
+            results.Count().ShouldEqual(2);
         }
 
         [Test]
@@ -164,7 +170,9 @@ namespace CorrugatedIron.Tests.Live
             var one = new RiakObject(TestBucket, "one", TestJson, RiakConstants.ContentTypes.ApplicationJson);
             var two = new RiakObject(TestBucket, "two", TestJson, RiakConstants.ContentTypes.ApplicationJson);
 
-            var results = Client.Async.Put(new List<RiakObject> {one, two}).ToEnumerable().ToList();
+            var results = Client.Async.Put(new List<RiakObject> {one, two})
+                .ToEnumerable()
+                .ToList();
 
             results.Count.ShouldEqual(2);
         }
