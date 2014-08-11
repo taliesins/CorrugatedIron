@@ -24,49 +24,49 @@ namespace CorrugatedIron
             return _endPoint.CreateClient();
         }
 
-        public Task GetSingleResultViaPbc(Func<RiakPbcSocket, Task> useFun)
+        public async Task GetSingleResultViaPbc(Func<RiakPbcSocket, Task> useFun)
         {
-            return _endPoint.GetSingleResultViaPbc(_endPointContext, useFun);
+            await _endPoint.GetSingleResultViaPbc(_endPointContext, useFun).ConfigureAwait(false);
         }
 
-        public Task<TResult> GetSingleResultViaPbc<TResult>(Func<RiakPbcSocket, Task<TResult>> useFun)
+        public async Task<TResult> GetSingleResultViaPbc<TResult>(Func<RiakPbcSocket, Task<TResult>> useFun)
         {
-            return _endPoint.GetSingleResultViaPbc(_endPointContext, useFun);
+            return await _endPoint.GetSingleResultViaPbc(_endPointContext, useFun).ConfigureAwait(false);
         }
 
-        public Task GetMultipleResultViaPbc(Action<RiakPbcSocket> useFun)
+        public async Task GetMultipleResultViaPbc(Func<RiakPbcSocket, Task> useFun)
         {
-            return _endPoint.GetMultipleResultViaPbc(_endPointContext, useFun);
+            await _endPoint.GetMultipleResultViaPbc(_endPointContext, useFun).ConfigureAwait(false);
         }
 
-        public Task GetSingleResultViaPbc(IRiakEndPointContext riakEndPointContext, Func<RiakPbcSocket, Task> useFun)
+        public async Task GetSingleResultViaPbc(IRiakEndPointContext riakEndPointContext, Func<RiakPbcSocket, Task> useFun)
         {
-            return _endPoint.GetSingleResultViaPbc(riakEndPointContext, useFun);
+            await _endPoint.GetSingleResultViaPbc(riakEndPointContext, useFun).ConfigureAwait(false);
         }
 
-        public Task<TResult> GetSingleResultViaPbc<TResult>(IRiakEndPointContext riakEndPointContext, Func<RiakPbcSocket, Task<TResult>> useFun)
+        public async Task<TResult> GetSingleResultViaPbc<TResult>(IRiakEndPointContext riakEndPointContext, Func<RiakPbcSocket, Task<TResult>> useFun)
         {
-            return _endPoint.GetSingleResultViaPbc(riakEndPointContext, useFun);
+            return await _endPoint.GetSingleResultViaPbc(riakEndPointContext, useFun).ConfigureAwait(false);
         }
 
-        public Task GetMultipleResultViaPbc(IRiakEndPointContext riakEndPointContext, Action<RiakPbcSocket> useFun)
+        public async Task GetMultipleResultViaPbc(IRiakEndPointContext riakEndPointContext, Func<RiakPbcSocket, Task> useFun)
         {
-            return _endPoint.GetMultipleResultViaPbc(riakEndPointContext, useFun);
+            await _endPoint.GetMultipleResultViaPbc(riakEndPointContext, useFun).ConfigureAwait(false);
         }
 
-        public Task GetSingleResultViaRest(Func<string, Task> useFun)
+        public async Task GetSingleResultViaRest(Func<string, Task> useFun)
         {
-            return _endPoint.GetSingleResultViaRest(useFun);
+            await _endPoint.GetSingleResultViaRest(useFun).ConfigureAwait(false);
         }
 
-        public Task<TResult> GetSingleResultViaRest<TResult>(Func<string, Task<TResult>> useFun)
+        public async Task<TResult> GetSingleResultViaRest<TResult>(Func<string, Task<TResult>> useFun)
         {
-            return _endPoint.GetSingleResultViaRest(useFun);
+            return await _endPoint.GetSingleResultViaRest(useFun).ConfigureAwait(false);
         }
 
-        public Task GetMultipleResultViaRest(Action<string> useFun)
+        public async Task GetMultipleResultViaRest(Func<string, Task> useFun)
         {
-            return _endPoint.GetMultipleResultViaRest(useFun);
+            await _endPoint.GetMultipleResultViaRest(useFun).ConfigureAwait(false);
         }
     }
 }

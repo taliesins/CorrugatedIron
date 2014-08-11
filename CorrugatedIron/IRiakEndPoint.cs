@@ -26,14 +26,14 @@ namespace CorrugatedIron
 
         Task GetSingleResultViaPbc(Func<RiakPbcSocket, Task> useFun);
         Task<TResult> GetSingleResultViaPbc<TResult>(Func<RiakPbcSocket, Task<TResult>> useFun);
-        Task GetMultipleResultViaPbc(Action<RiakPbcSocket> useFun);
+        Task GetMultipleResultViaPbc(Func<RiakPbcSocket, Task> useFun);
 
         Task GetSingleResultViaPbc(IRiakEndPointContext riakEndPointContext, Func<RiakPbcSocket, Task> useFun);
         Task<TResult> GetSingleResultViaPbc<TResult>(IRiakEndPointContext riakEndPointContext, Func<RiakPbcSocket, Task<TResult>> useFun);
-        Task GetMultipleResultViaPbc(IRiakEndPointContext riakEndPointContext, Action<RiakPbcSocket> useFun);
+        Task GetMultipleResultViaPbc(IRiakEndPointContext riakEndPointContext, Func<RiakPbcSocket, Task> useFun);
 
         Task GetSingleResultViaRest(Func<string, Task> useFun);
         Task<TResult> GetSingleResultViaRest<TResult>(Func<string, Task<TResult>> useFun);
-        Task GetMultipleResultViaRest(Action<string> useFun);
+        Task GetMultipleResultViaRest(Func<string, Task> useFun);
     }
 }

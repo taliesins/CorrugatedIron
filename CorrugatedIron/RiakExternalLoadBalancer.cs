@@ -118,7 +118,7 @@ namespace CorrugatedIron
             return result;
         }
 
-        public async Task GetMultipleResultViaPbc(Action<RiakPbcSocket> useFun)
+        public async Task GetMultipleResultViaPbc(Func<RiakPbcSocket, Task> useFun)
         {
             if (_disposing)
             {
@@ -128,7 +128,7 @@ namespace CorrugatedIron
             await _node.GetMultipleResultViaPbc(useFun).ConfigureAwait(false);
         }
 
-        public async Task GetMultipleResultViaPbc(IRiakEndPointContext riakEndPointContext, Action<RiakPbcSocket> useFun)
+        public async Task GetMultipleResultViaPbc(IRiakEndPointContext riakEndPointContext, Func<RiakPbcSocket, Task> useFun)
         {
             if (_disposing)
             {
@@ -169,7 +169,7 @@ namespace CorrugatedIron
             return result;
         }
 
-        public async Task GetMultipleResultViaRest(Action<string> useFun)
+        public async Task GetMultipleResultViaRest(Func<string, Task> useFun)
         {
             if (_disposing)
             {

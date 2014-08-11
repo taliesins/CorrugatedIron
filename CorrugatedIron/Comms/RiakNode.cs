@@ -107,14 +107,14 @@ namespace CorrugatedIron.Comms
             return result;
         }
 
-        public async Task GetMultipleResultViaPbc(Action<RiakPbcSocket> useFun)
+        public async Task GetMultipleResultViaPbc(Func<RiakPbcSocket, Task> useFun)
         {
             RiakPbcSocket socket = null;
             ExceptionDispatchInfo capturedException = null;
             try
             {
                 socket = await _connectionManager.CreateSocket().ConfigureAwait(false);
-                useFun(socket);
+                await useFun(socket).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -129,9 +129,9 @@ namespace CorrugatedIron.Comms
             }
         }
 
-        public async Task GetMultipleResultViaPbc(RiakPbcSocket socket, Action<RiakPbcSocket> useFun)
+        public async Task GetMultipleResultViaPbc(RiakPbcSocket socket, Func<RiakPbcSocket, Task> useFun)
         {
-            useFun(socket);
+            await useFun(socket).ConfigureAwait(false);
         }
 
         public async Task GetSingleResultViaRest(Func<string, Task> useFun)
@@ -181,14 +181,14 @@ namespace CorrugatedIron.Comms
             return result;
         }
 
-        public async Task GetMultipleResultViaRest(Action<string> useFun)
+        public async Task GetMultipleResultViaRest(Func<string, Task> useFun)
         {
             string serverUrl = null;
             ExceptionDispatchInfo capturedException = null;
             try
             {
                 serverUrl = await _connectionManager.CreateServerUrl().ConfigureAwait(false);
-                useFun(serverUrl);
+                await useFun(serverUrl).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
