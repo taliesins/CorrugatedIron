@@ -99,7 +99,10 @@ namespace CorrugatedIron
                 {
                     try
                     {
-                        await node.GetSingleResultViaPbc(socket => _riakConnection.PbcWriteRead(this, MessageCode.PingReq, MessageCode.PingResp)).ConfigureAwait(false);
+                        var nodeToMonitor = node;
+
+                        await node.GetSingleResultViaPbc(s => _riakConnection.PbcWriteRead(new RiakNodeEndpoint(nodeToMonitor), MessageCode.PingReq, MessageCode.PingResp)).ConfigureAwait(false);
+
                         _loadBalancer.AddNode(node);
                     }
                     catch (Exception)

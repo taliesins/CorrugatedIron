@@ -281,6 +281,7 @@
     <Compile Include="Config\RiakNodeConfigurationCollection.cs" />
     <Compile Include="Extensions\EnumerableExtensions.cs" />
     <Compile Include="Extensions\JsonExtensions.cs" />
+    <Compile Include="RiakNodeEndpoint.cs" />
     <Compile Include="Util\RiakConstants.cs" />
     <Compile Include="Extensions\StringExtensions.cs" />
     <Compile Include="Messages\MessageCode.cs" />
