@@ -26,28 +26,51 @@ namespace CorrugatedIron.Comms
 {
     internal class RiakConnectionPool : IRiakConnectionManager
     {
-        private readonly List<RiakPbcSocket> _allResources;
-        private readonly BlockingCollection<RiakPbcSocket> _resources;
+        private readonly string _hostAddress;
+        private readonly int _poolSize;
+        private readonly int _bufferSize;
+        private readonly string _restScheme;
+        private readonly int _restPort;
+        private readonly int _pbcPort;
+        private readonly int _networkReadTimeout;
+        private readonly int _networkWriteTimeout;
+        private readonly SocketAwaitablePool _pool;
+        private readonly BlockingBufferManager _blockingBufferManager;
+        private List<RiakPbcSocket> _allResources;
+        private BlockingCollection<RiakPbcSocket> _resources;
         private readonly string _serverUrl;
         private bool _disposing;
 
         public RiakConnectionPool(IRiakNodeConfiguration nodeConfig)
         {
-            var poolSize = nodeConfig.PoolSize;
-            var pool = new SocketAwaitablePool(nodeConfig.PoolSize);
-            var bufferManager = new BlockingBufferManager(nodeConfig.BufferSize, nodeConfig.PoolSize);
-            _serverUrl = @"{0}://{1}:{2}".Fmt(nodeConfig.RestScheme, nodeConfig.HostAddress, nodeConfig.RestPort);
+            _hostAddress = nodeConfig.HostAddress;
+            _poolSize = nodeConfig.PoolSize;
+            _pool = new SocketAwaitablePool(_poolSize);
+            _bufferSize = nodeConfig.BufferSize;
+            _restScheme = nodeConfig.RestScheme;
+            _restPort = nodeConfig.RestPort;
+            _pbcPort = nodeConfig.PbcPort;
+            _networkReadTimeout = nodeConfig.NetworkReadTimeout;
+            _networkWriteTimeout = nodeConfig.NetworkWriteTimeout;
+            _blockingBufferManager = new BlockingBufferManager(_bufferSize, _poolSize);
+            _serverUrl = @"{0}://{1}:{2}".Fmt(_restScheme, _hostAddress, _restPort);
+
+            Init();
+        }
+
+        private void Init()
+        {
             _allResources = new List<RiakPbcSocket>();
 
-            for(var i = 0; i < poolSize; ++i)
+            for (var i = 0; i < _poolSize; ++i)
             {
                 var socket = new RiakPbcSocket(
-                    nodeConfig.HostAddress,
-                    nodeConfig.PbcPort,
-                    nodeConfig.NetworkReadTimeout,
-                    nodeConfig.NetworkWriteTimeout,
-                    pool,
-                    bufferManager);
+                    _hostAddress,
+                    _pbcPort,
+                    _networkReadTimeout,
+                    _networkWriteTimeout,
+                    _pool,
+                    _blockingBufferManager);
 
                 _allResources.Add(socket);
             }
@@ -88,7 +111,6 @@ namespace CorrugatedIron.Comms
             }
 
             throw new TimeoutException("Unable to create socket");
- 
         }
 
         public async Task Release(RiakPbcSocket socket)
@@ -96,6 +118,14 @@ namespace CorrugatedIron.Comms
             if (_disposing) return;
 
             _resources.Add(socket);
+        }
+
+        public async Task ReleaseAll()
+        {
+            if (_disposing) return;
+
+            //We going to let other RiakPbcSockets die a natural garbage collection death, as we may have a few open sockets
+            Init();
         }
     }
 }

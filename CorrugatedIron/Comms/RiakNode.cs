@@ -49,6 +49,11 @@ namespace CorrugatedIron.Comms
             await _connectionManager.Release(socket).ConfigureAwait(false);
         }
 
+        public async Task ReleaseAll()
+        {
+            await _connectionManager.ReleaseAll().ConfigureAwait(false);
+        }
+
         public async Task GetSingleResultViaPbc(Func<RiakPbcSocket, Task> useFun)
         {
             RiakPbcSocket socket = null;
@@ -78,7 +83,7 @@ namespace CorrugatedIron.Comms
 
         public async Task<TResult> GetSingleResultViaPbc<TResult>(Func<RiakPbcSocket, Task<TResult>> useFun)
         {
-            TResult result = default(TResult);
+            var result = default(TResult);
             RiakPbcSocket socket = null;
             ExceptionDispatchInfo capturedException = null;
             try
@@ -158,7 +163,7 @@ namespace CorrugatedIron.Comms
 
         public async Task<TResult> GetSingleResultViaRest<TResult>(Func<string, Task<TResult>> useFun)
         {
-            TResult result = default(TResult);
+            var result = default(TResult);
             string serverUrl = null;
             ExceptionDispatchInfo capturedException = null;
             try

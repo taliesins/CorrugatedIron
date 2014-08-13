@@ -36,11 +36,6 @@ namespace CorrugatedIron.Comms.Sockets
         {
             lock (_list)
             {
-                while (_list.Count == 0)
-                {
-                    System.Diagnostics.Debug.Write("Waiting in dequeue as queue size = " + _list.Count);
-                    Monitor.Wait(_list);
-                }
                 var result = _list.Remove(item);
                 if (_list.Count < _maxSize)
                 {
@@ -48,6 +43,21 @@ namespace CorrugatedIron.Comms.Sockets
                     Monitor.PulseAll(_list);
                 }
                 return result;
+            }
+        }
+
+        public void Clear()
+        {
+            while (_list.Count > 0)
+            {
+                lock (_list)
+                {
+                    _list.Clear();
+
+                    // wake up any blocked enqueue
+                    Monitor.PulseAll(_list);
+                    Monitor.Wait(_list);
+                }
             }
         }
     }

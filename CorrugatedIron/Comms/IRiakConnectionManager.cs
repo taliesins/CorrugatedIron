@@ -26,5 +26,7 @@ namespace CorrugatedIron.Comms
 
         Task<RiakPbcSocket> CreateSocket();
         Task Release(RiakPbcSocket socket);
+
+        Task ReleaseAll();
     }
 }

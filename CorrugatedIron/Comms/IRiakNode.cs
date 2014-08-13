@@ -7,6 +7,7 @@ namespace CorrugatedIron.Comms
     {   
         Task<RiakPbcSocket> CreateSocket();
         Task Release(RiakPbcSocket socket);
+        Task ReleaseAll();
 
         Task GetSingleResultViaPbc(Func<RiakPbcSocket, Task> useFun);
         Task<TResult> GetSingleResultViaPbc<TResult>(Func<RiakPbcSocket, Task<TResult>> useFun);

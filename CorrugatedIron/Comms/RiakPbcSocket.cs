@@ -59,6 +59,11 @@ namespace CorrugatedIron.Comms
             var result = SocketError.Fault;
             for (var i = 0; i < _socketConnectAttempts; i++)
             {
+                if (_socket != null)
+                {
+                    _socket.Close();
+                    _socket = null;
+                }
                 _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
                 {
                     NoDelay = true,
@@ -79,10 +84,6 @@ namespace CorrugatedIron.Comms
                     {
                         break;
                     }
-                    else
-                    {
-                        var message = "dodgy";
-                    }
                 }
                 finally
                 {
@@ -93,6 +94,11 @@ namespace CorrugatedIron.Comms
 
             if (result != SocketError.Success)
             {
+                if (_socket != null)
+                {
+                    _socket.Close();
+                    _socket = null;
+                }
                 throw new RiakException("Unable to connect to remote server: {0}:{1} error code {2}".Fmt(_endPoint.Host, _endPoint.Port, result));
             }
         }
@@ -189,7 +195,7 @@ namespace CorrugatedIron.Comms
         {
             get
             {
-                return HasSocket && _socket.Connected;
+                return HasSocket && _socket.Connected; //This will not detect half closed sockets
             }
         }
 
@@ -264,10 +270,28 @@ namespace CorrugatedIron.Comms
                     sizeSize + codeSize);
 
                 Array.Copy(size, 0, messageBody.Array, messageBody.Offset, sizeSize);
-                messageBody.Array[messageBody.Offset + sizeSize] = (byte)messageCode;
+                messageBody.Array[messageBody.Offset + sizeSize] = (byte) messageCode;
 
                 await GetConnectedSocket().ConfigureAwait(false);
                 await SendAsync(messageBody).ConfigureAwait(false);
+            }
+            catch (RiakException)
+            {
+                if (_socket != null)
+                {
+                    _socket.Close();
+                    _socket = null;
+                }
+                throw;
+            }
+            catch (SocketException)
+            {
+                if (_socket != null)
+                {
+                    _socket.Close();
+                    _socket = null;
+                }
+                throw;
             }
             finally
             {
@@ -310,6 +334,24 @@ namespace CorrugatedIron.Comms
                     await GetConnectedSocket().ConfigureAwait(false);
                     await SendAsync(messageBody).ConfigureAwait(false);
                 }
+            }
+            catch (RiakException)
+            {
+                if (_socket != null)
+                {
+                    _socket.Close();
+                    _socket = null;
+                }
+                throw;
+            }
+            catch (SocketException)
+            {
+                if (_socket != null)
+                {
+                    _socket.Close();
+                    _socket = null;
+                }
+                throw;
             }
             finally
             {
@@ -359,6 +401,24 @@ namespace CorrugatedIron.Comms
                 }
 
                 return messageCode;
+            }
+            catch (RiakException)
+            {
+                if (_socket != null)
+                {
+                    _socket.Close();
+                    _socket = null;
+                }
+                throw;
+            }
+            catch (SocketException)
+            {
+                if (_socket != null)
+                {
+                    _socket.Close();
+                    _socket = null;
+                }
+                throw;
             }
             finally
             {
@@ -447,6 +507,24 @@ namespace CorrugatedIron.Comms
                     var message = Serializer.Deserialize<T>(stream);
                     return message;
                 }
+            }
+            catch (RiakException)
+            {
+                if (_socket != null)
+                {
+                    _socket.Close();
+                    _socket = null;
+                }
+                throw;
+            }
+            catch (SocketException)
+            {
+                if (_socket != null)
+                {
+                    _socket.Close();
+                    _socket = null;
+                }
+                throw;
             }
             finally
             {

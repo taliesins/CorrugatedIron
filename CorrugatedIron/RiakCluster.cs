@@ -84,6 +84,7 @@ namespace CorrugatedIron
                 if (!_offlineNodes.Contains(node))
                 {
                     _loadBalancer.RemoveNode(node);
+                    node.ReleaseAll().ConfigureAwait(false).GetAwaiter().GetResult();
                     _offlineNodes.Enqueue(node);
                 }
             }
@@ -101,13 +102,22 @@ namespace CorrugatedIron
                     {
                         var nodeToMonitor = node;
 
-                        await node.GetSingleResultViaPbc(s => _riakConnection.PbcWriteRead(new RiakNodeEndpoint(nodeToMonitor), MessageCode.PingReq, MessageCode.PingResp)).ConfigureAwait(false);
+                       await
+                            _riakConnection.PbcWriteRead(new RiakNodeEndpoint(nodeToMonitor), MessageCode.PingReq,
+                                MessageCode.PingResp).ConfigureAwait(false);
 
                         _loadBalancer.AddNode(node);
                     }
                     catch (Exception)
                     {
-                        deadNodes.Add(node);
+                        try
+                        {
+                            node.ReleaseAll().ConfigureAwait(false).GetAwaiter().GetResult();
+                        }
+                        finally
+                        {
+                            deadNodes.Add(node);
+                        }
                     }
                 }
 

@@ -48,7 +48,7 @@ namespace CorrugatedIron.Tests.Live.GeneralIntegrationTests
         }
 
         [Test]
-        public void PingRequstResultsInPingResponse()
+        public void PingRequestResultsInPingResponse()
         {
             Client.Ping().ShouldNotBeNull();
         }

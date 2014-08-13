@@ -14,7 +14,6 @@
 // specific language governing permissions and limitations
 // under the License.
 
-using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using CorrugatedIron.Comms.Sockets;
 using CorrugatedIron.Config;
@@ -82,6 +81,12 @@ namespace CorrugatedIron.Comms
             {
                 socket.Dispose();
             }
+        }
+
+        public async Task ReleaseAll()
+        {
+            //We going to let other RiakPbcSockets die a natural garbage collection death, as we may have a few open sockets
+            _resources.Clear();
         }
     }
 }
