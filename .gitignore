@@ -36,3 +36,4 @@ _NCrunch_*
 *.sdf
 *.mdf
 *.ldf
+CroMagVersion.cs

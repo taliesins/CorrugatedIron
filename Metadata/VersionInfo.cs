@@ -19,10 +19,7 @@ using System.Reflection;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Distributed Nonsense")]
 [assembly: AssemblyProduct("CorrugatedIron")]
-[assembly: AssemblyCopyright("Copyright © 2013 OJ Reeves & Jeremiah Peschka")]
 [assembly: AssemblyTrademark("CorrugatedIron - Distributed Nonsense")]
 [assembly: AssemblyCulture("")]
 

@@ -112,6 +112,11 @@
     <Compile Include="Containers\Either.cs" />
     <Compile Include="IRiakAsyncBatchClient.cs" />
     <Compile Include="Models\Pong.cs" />
+    <Compile Include="Properties\CroMagVersion.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>CroMagVersion.tt</DependentUpon>
+    </Compile>
     <Compile Include="RiakBatch.cs" />
     <Compile Include="RiakEndPointContext.cs" />
     <Compile Include="Exceptions\RiakInvalidDataException.cs" />
@@ -314,8 +319,17 @@
     <None Include="packages.config">
       <SubType>Designer</SubType>
     </None>
+    <None Include="Properties\CroMagVersion.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>CroMagVersion.cs</LastGenOutput>
+    </None>
+    <None Include="Properties\version.props" />
+  </ItemGroup>
+  <ItemGroup>
+    <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="..\packages\CroMagVersion.0.3.6.8\Tools\CroMagVersion.targets" Condition="Exists('..\packages\CroMagVersion.0.3.6.8\Tools\CroMagVersion.targets')" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
