@@ -15,8 +15,6 @@
 // under the License.
 
 using System.Reactive.Linq;
-using CorrugatedIron.Containers;
-using CorrugatedIron.Exceptions;
 using CorrugatedIron.Extensions;
 using CorrugatedIron.Models;
 using CorrugatedIron.Tests.Extensions;
