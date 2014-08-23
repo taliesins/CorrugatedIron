@@ -34,6 +34,7 @@ namespace CorrugatedIron.Comms
         private readonly int _pbcPort;
         private readonly int _networkReadTimeout;
         private readonly int _networkWriteTimeout;
+        private readonly int _idleTimeout;
         private readonly SocketAwaitablePool _pool;
         private readonly BlockingBufferManager _blockingBufferManager;
         private List<RiakPbcSocket> _allResources;
@@ -52,6 +53,8 @@ namespace CorrugatedIron.Comms
             _pbcPort = nodeConfig.PbcPort;
             _networkReadTimeout = nodeConfig.NetworkReadTimeout;
             _networkWriteTimeout = nodeConfig.NetworkWriteTimeout;
+            _idleTimeout = nodeConfig.IdleTimeout;
+            
             _blockingBufferManager = new BlockingBufferManager(_bufferSize, _poolSize);
             _serverUrl = @"{0}://{1}:{2}".Fmt(_restScheme, _hostAddress, _restPort);
 
@@ -69,6 +72,7 @@ namespace CorrugatedIron.Comms
                     _pbcPort,
                     _networkReadTimeout,
                     _networkWriteTimeout,
+                    _idleTimeout,
                     _pool,
                     _blockingBufferManager);
 

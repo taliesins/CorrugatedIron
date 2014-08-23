@@ -63,6 +63,7 @@ namespace CorrugatedIron.Comms
                     _nodeConfig.PbcPort,
                     _nodeConfig.NetworkReadTimeout,
                     _nodeConfig.NetworkWriteTimeout,
+                    _nodeConfig.IdleTimeout,
                     _pool,
                     _bufferManager);
 

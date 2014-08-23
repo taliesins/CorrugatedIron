@@ -25,7 +25,7 @@ namespace CorrugatedIron.Config
         int RestPort { get; }
         int PoolSize { get; }
         int BufferSize { get; }
-        //int IdleTimeout { get; }
+        int IdleTimeout { get; }
         int NetworkReadTimeout { get; }
         int NetworkWriteTimeout { get; }
     }

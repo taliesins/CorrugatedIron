@@ -34,22 +34,29 @@ namespace CorrugatedIron.Comms
         private readonly DnsEndPoint _endPoint;
         private readonly int _receiveTimeout;
         private readonly int _sendTimeout;
+        private readonly TimeSpan _idleTimeout;
+        private readonly int _receiveBufferSize;
+        private readonly int _sendBufferSize;
         private readonly SocketAwaitablePool _socketAwaitablePool;
         private readonly BlockingBufferManager _blockingBufferManager;
         private static readonly Dictionary<MessageCode, Type> MessageCodeToTypeMap;
         private static readonly Dictionary<Type, MessageCode> TypeToMessageCodeMap;
 
         private Socket _socket;
+        private DateTime _lastActivity;
 
-        public RiakPbcSocket(string server, int port, int receiveTimeout, int sendTimeout,
+        public RiakPbcSocket(string server, int port, int receiveTimeout, int sendTimeout, int idleTimeout,
             SocketAwaitablePool socketAwaitablePool, BlockingBufferManager blockingBufferManager,
-            int socketConnectAttempts = 3)
+            int receiveBufferSize = 8192, int sendBufferSize = 8192, int socketConnectAttempts = 3)
         {
             _endPoint = new DnsEndPoint(server, port);
             _receiveTimeout = receiveTimeout;
             _sendTimeout = sendTimeout;
+            _idleTimeout = new TimeSpan(0, 0, 0, 0, idleTimeout);
             _socketAwaitablePool = socketAwaitablePool;
             _blockingBufferManager = blockingBufferManager;
+            _receiveBufferSize = receiveBufferSize;
+            _sendBufferSize = sendBufferSize;
             _socketConnectAttempts = socketConnectAttempts;
             _socket = null;
         }
@@ -66,18 +73,22 @@ namespace CorrugatedIron.Comms
                 }
                 _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
                 {
+                    UseOnlyOverlappedIO = true,
                     NoDelay = true,
                     ReceiveTimeout = _receiveTimeout,
-                    SendTimeout = _sendTimeout
+                    SendTimeout = _sendTimeout,
+                    ReceiveBufferSize = _receiveBufferSize,
+                    SendBufferSize = _sendBufferSize
                 };
-
+                
                 var awaitable = _socketAwaitablePool.Take();
                 try
                 {
                     awaitable.RemoteEndPoint = endPoint;
 
                     var socketAwaitable = _socket.ConnectAsync(awaitable);
-                    
+                    _lastActivity = DateTime.UtcNow;
+
                     result = await socketAwaitable;
 
                     if (result == SocketError.Success)
@@ -107,11 +118,13 @@ namespace CorrugatedIron.Comms
         {
             var awaitable = _socketAwaitablePool.Take();
             awaitable.Buffer = new ArraySegment<byte>(buffer.Array, buffer.Offset, buffer.Count);
+
             try
             {
                 while (true)
                 {       
                     var result = await _socket.ReceiveAsync(awaitable);
+                    _lastActivity = DateTime.UtcNow;
 
                     if (result != SocketError.Success)
                     {
@@ -153,6 +166,7 @@ namespace CorrugatedIron.Comms
                 while (true)
                 {
                     var result = await _socket.SendAsync(awaitable);
+                    _lastActivity = DateTime.UtcNow;
 
                     if (result != SocketError.Success)
                     {
@@ -195,7 +209,10 @@ namespace CorrugatedIron.Comms
         {
             get
             {
-                return HasSocket && _socket.Connected; //This will not detect half closed sockets
+                return HasSocket 
+                    && _socket.Connected
+                    && _lastActivity != null
+                    && DateTime.UtcNow.Subtract(_lastActivity) <= _idleTimeout ; //This will not detect half closed sockets
             }
         }
 
