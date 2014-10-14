@@ -1,1 +1,7 @@
-# CorrugatedIron V2 #Currently undergoing loads of change. This is Alpha at best.Making the Corrugated Iron client asynchrounous.
+# CorrugatedIron V2 #
+
+Ported all methods to be asynchronous and reactive. Performance seems pretty good too. 
+
+* Pooled connections
+* Detect half open connections
+* Asynchronous by default
